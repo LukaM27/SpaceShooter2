@@ -52,18 +52,22 @@ function loadUnityGame() {
 const gameName = "igra"; 
 
 // I proveri da li ti putanje ispod izgledaju ovako:
+// ... unutar loadUnityGame funkcije ...
+
+// 1. Ovde promeni "Build/" u "build/"
 const config = {
-    dataUrl: "Build/" + gameName + ".data",
-    frameworkUrl: "Build/" + gameName + ".framework.js",
-    codeUrl: "Build/" + gameName + ".wasm",
+    dataUrl: "build/" + gameName + ".data",
+    frameworkUrl: "build/" + gameName + ".framework.js",
+    codeUrl: "build/" + gameName + ".wasm",
     streamingAssetsUrl: "StreamingAssets",
     companyName: "DefaultCompany",
     productName: "GigatronGame",
     productVersion: "1.0",
 };
 
-    const loaderScript = document.createElement("script");
-    loaderScript.src = "Build/" + gameName + ".loader.js"; 
+// 2. I OVDE promeni "Build/" u "build/"
+const loaderScript = document.createElement("script");
+loaderScript.src = "build/" + gameName + ".loader.js";
     
     loaderScript.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
@@ -114,4 +118,5 @@ async function showLeaderboard() {
     navigate('page-leaderboard');
     const { data } = await _supabase.from('leaderboard').select('email, points').order('points', { ascending: false }).limit(10);
     document.getElementById('lb-body').innerHTML = data.map((u, i) => `<tr><td>${i+1}.</td><td>${u.email.split('@')[0]}***</td><td>${u.points}</td></tr>`).join('');
+
 }
