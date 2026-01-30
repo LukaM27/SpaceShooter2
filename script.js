@@ -50,17 +50,15 @@ function loadUnityGame() {
     const gameName = "igra"; 
 
    const config = {
-    dataUrl: "build/" + gameName + ".data",
-    frameworkUrl: "build/" + gameName + ".framework.js",
-    codeUrl: "build/" + gameName + ".wasm",
-    streamingAssetsUrl: "StreamingAssets",
-    companyName: "DefaultCompany",
-    productName: "GigatronGame",
-    productVersion: "1.0",
-    // OBAVEZNO DODAJ OVE DVE LINIJE:
-    devicePixelRatio: 1, 
-    matchWebGLToCanvasSize: false 
-};
+        dataUrl: "build/" + gameName + ".data",
+        frameworkUrl: "build/" + gameName + ".framework.js",
+        // OVDE MENJAŠ: Dodaj .unityweb na kraj
+        codeUrl: "build/" + gameName + ".wasm.unityweb", 
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "DefaultCompany",
+        productName: "GigatronGame",
+        productVersion: "1.0",
+    };
 
     const loaderScript = document.createElement("script");
     loaderScript.src = "build/" + gameName + ".loader.js"; 
@@ -116,5 +114,6 @@ async function showLeaderboard() {
     document.getElementById('lb-body').innerHTML = data.map((u, i) => `<tr><td>${i+1}.</td><td>${u.email.split('@')[0]}***</td><td>${u.points}</td></tr>`).join('');
 
 }
+
 
 
