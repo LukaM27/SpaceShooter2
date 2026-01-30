@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gigatron Scan2Win PRO</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <header>
+        <div class="logo-box">
+            <div class="shiny-box">
+                <div class="logo">GIGATRON <span style="color: #fff;">SCAN<font style="color:rgba(255, 215, 0, 1)">2</font>WIN</span></div>
+                <div class="shimmer"></div>
+            </div>
+        </div>
+        <button id="info-btn" class="info-circle" onclick="toggleUserInfo()">?</button>
+    </header>
+
+    <main id="app-container">
+        <section id="page-scan" class="page active">
+            <h1 class="logo" style="font-size: 1.2rem; margin-bottom: 20px;">ZAPOČNI AVANTURU</h1>
+            <div id="reader-container">
+                <div id="reader"></div>
+                <div class="scanner-line"></div>
+            </div>
+            <div id="scan-status">Spremite Gigatron račun...</div>
+            <button id="start-camera-btn" class="btn" onclick="startScanner()">AKTIVIRAJ KAMERU</button>
+        </section>
+
+        <section id="page-game" class="page">
+            <div class="game-header">
+                <div id="game-score">BODOVI: <span id="js-score">0</span></div>
+            </div>
+            
+            <div id="unity-container" style="position: relative; width: 320px; height: 450px; background: #000; border: 3px solid var(--yellow); border-radius: 16px;">
+                <canvas id="unity-canvas" style="width: 100%; height: 100%;"></canvas>
+                <div id="unity-loading-bar" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80%;">
+                    <div style="color: var(--yellow); font-family: 'Orbitron'; font-size: 10px; margin-bottom: 5px;">UCITAVANJE...</div>
+                    <div style="height: 10px; background: #222; border-radius: 5px; overflow: hidden;">
+                        <div id="unity-progress-bar-full" style="width: 0%; height: 100%; background: var(--yellow);"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="game-over-box" class="hidden">
+                <h2 style="color: var(--yellow);">KRAJ IGRE!</h2>
+                <p>Osvojili ste: <strong id="final-score-display">0</strong> poena</p>
+                <button class="btn" onclick="navigate('page-auth')">SNIMI REZULTAT</button>
+            </div>
+        </section>
+
+        <section id="page-auth" class="page">
+            <div class="auth-container card">
+                <h2 class="logo">FINALNI KORAK</h2>
+                <input type="email" id="auth-email" placeholder="Email adresa">
+                <input type="password" id="auth-password" placeholder="Lozinka">
+                <button class="btn" onclick="handleAuth()">POTVRDI</button>
+                <p id="auth-msg"></p>
+            </div>
+        </section>
+
+        <section id="page-leaderboard" class="page">
+            <h1 class="logo">RANG LISTA</h1>
+            <div class="leaderboard-wrapper">
+                <table><tbody id="lb-body"></tbody></table>
+            </div>
+            <button class="btn" onclick="location.reload()">IGRAJ PONOVO</button>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
