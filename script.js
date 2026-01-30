@@ -47,27 +47,20 @@ function loadUnityGame() {
     const loadingBar = document.querySelector("#unity-loading-bar");
     const progressBar = document.querySelector("#unity-progress-bar-full");
 
-    // VAŽNO: Koristimo tačan naziv tvojih fajlova
-    // Izmeni ovu liniju da bude tačno ovako:
-const gameName = "igra"; 
+    const gameName = "igra"; 
 
-// I proveri da li ti putanje ispod izgledaju ovako:
-// ... unutar loadUnityGame funkcije ...
+    const config = {
+        dataUrl: "build/" + gameName + ".data",
+        frameworkUrl: "build/" + gameName + ".framework.js",
+        codeUrl: "build/" + gameName + ".wasm",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "DefaultCompany",
+        productName: "GigatronGame",
+        productVersion: "1.0",
+    };
 
-// 1. Ovde promeni "Build/" u "build/"
-const config = {
-    dataUrl: "build/" + gameName + ".data",
-    frameworkUrl: "build/" + gameName + ".framework.js",
-    codeUrl: "build/" + gameName + ".wasm",
-    streamingAssetsUrl: "StreamingAssets",
-    companyName: "DefaultCompany",
-    productName: "GigatronGame",
-    productVersion: "1.0",
-};
-
-// 2. I OVDE promeni "Build/" u "build/"
-const loaderScript = document.createElement("script");
-loaderScript.src = "build/" + gameName + ".loader.js";
+    const loaderScript = document.createElement("script");
+    loaderScript.src = "build/" + gameName + ".loader.js"; 
     
     loaderScript.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
@@ -77,7 +70,7 @@ loaderScript.src = "build/" + gameName + ".loader.js";
             loadingBar.style.display = "none";
         }).catch((err) => {
             console.error("Unity Error:", err);
-            alert("Greška: Proveri da li se fajlovi u Build folderu zovu baš: " + gameName);
+            alert("Unity se buni. Proveri imena fajlova u build folderu!");
         });
     };
     document.body.appendChild(loaderScript);
@@ -120,3 +113,4 @@ async function showLeaderboard() {
     document.getElementById('lb-body').innerHTML = data.map((u, i) => `<tr><td>${i+1}.</td><td>${u.email.split('@')[0]}***</td><td>${u.points}</td></tr>`).join('');
 
 }
+
