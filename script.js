@@ -52,7 +52,7 @@ function loadUnityGame() {
    const config = {
     dataUrl: "build/" + gameName + ".data.unityweb",
     frameworkUrl: "build/" + gameName + ".framework.js.unityweb",
-    codeUrl: "build/" + gameName + ".wasm.unityweb",
+    codeUrl: "build/" + gameName + ".wasm",
     streamingAssetsUrl: "StreamingAssets",
     companyName: "DefaultCompany",
     productName: "GigatronGame",
@@ -118,6 +118,7 @@ async function showLeaderboard() {
     document.getElementById('lb-body').innerHTML = data.map((u, i) => `<tr><td>${i+1}.</td><td>${u.email.split('@')[0]}***</td><td>${u.points}</td></tr>`).join('');
 
 }
+
 
 
 
