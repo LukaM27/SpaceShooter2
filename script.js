@@ -49,23 +49,22 @@ function loadUnityGame() {
 
     const gameName = "igra"; 
 
-   const config = {
-    dataUrl: "build/" + gameName + ".data.unityweb",
-    frameworkUrl: "build/" + gameName + ".framework.js.unityweb",
-    codeUrl: "build/" + gameName + ".wasm",
-    streamingAssetsUrl: "StreamingAssets",
-    companyName: "DefaultCompany",
-    productName: "GigatronGame",
-    productVersion: "1.0",
-    // DODAJ OVE DVE LINIJE - ONE SU SPAS:
-    decompressionFallback: true,
-    cacheControl: function (url) {
-        return "no-cache";
-    },
-};
+    const config = {
+        dataUrl: "build/" + gameName + ".data",
+        frameworkUrl: "build/" + gameName + ".framework.js",
+        codeUrl: "build/" + gameName + ".wasm",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: "DefaultCompany",
+        productName: "GigatronGame",
+        productVersion: "1.0",
+        // Dodajemo ovo za svaki slučaj da browser ne brlja
+        decompressionFallback: true,
+    };
 
     const loaderScript = document.createElement("script");
-    loaderScript.src = "build/" + gameName + ".loader.js"; 
+    // Rekao si da imaš i igra.js i igra.loader.js. 
+    // Unity obično koristi loader.js, pa ćemo ciljati njega:
+    loaderScript.src = "build/" + gameName + ".loader.js";
     
     loaderScript.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
@@ -118,6 +117,7 @@ async function showLeaderboard() {
     document.getElementById('lb-body').innerHTML = data.map((u, i) => `<tr><td>${i+1}.</td><td>${u.email.split('@')[0]}***</td><td>${u.points}</td></tr>`).join('');
 
 }
+
 
 
 
