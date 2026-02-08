@@ -2,163 +2,114 @@ const supabaseUrl = 'https://zeqzrziiligsmrqxonhj.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InplcXpyemlpbGlnc21ycXhvbmhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyNzA5MDksImV4cCI6MjA4NDg0NjkwOX0.p8utaac5OVzLUjNkhl3tdwUda0zZW34kQjFvyZVOE0s'; 
 const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-let html5QrCode;
 let currentScore = 0;
 let scannedReceiptId = "";
 let unityInstance = null;
 
+// --- NAVIGACIJA ---
 function navigate(id) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById(id).classList.add('active');
 }
 
-async function startScanner() {
-    // DODAJ OVE DVE LINIJE DA TESTIRAŠ ODMAH
-    navigate('page-game'); 
-    loadUnityGame();
-
-    try {
-        html5QrCode = new Html5Qrcode("reader");
-        await html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, onScanSuccess);
-    } catch (err) {
-        alert("Kamera ne može da se pokrene. Proveri dozvole.");
-    }
-}
-
-async function onScanSuccess(decodedText) {
-    if (!decodedText.includes("102778428")) { 
-        alert("Ovo nije Gigatron račun!"); 
-        return; 
-    }
-    scannedReceiptId = new URLSearchParams(decodedText.split('?')[1]).get('vl') || decodedText.slice(-30);
-    const { data: existing } = await _supabase.from('scanned_receipts').select('receipt_id').eq('receipt_id', scannedReceiptId).maybeSingle();
-    if (existing) { 
-        alert("Račun je već iskorišćen!"); 
-        return; 
-    }
-
-    if (html5QrCode) await html5QrCode.stop();
-    navigate('page-game');
-    loadUnityGame();
-}
-
+// --- UNITY LOADER ---
 function loadUnityGame() {
     const canvas = document.querySelector("#unity-canvas");
     const loadingBar = document.querySelector("#unity-loading-bar");
     const progressBar = document.querySelector("#unity-progress-bar-full");
 
-    const gameName = "igra"; 
-
-  const config = {
-        dataUrl: "build/" + gameName + ".data",
-        frameworkUrl: "build/" + gameName + ".framework.js",
-        codeUrl: "build/" + gameName + ".wasm",
+    const config = {
+        dataUrl: "build/igra.data",
+        frameworkUrl: "build/igra.framework.js",
+        codeUrl: "build/igra.wasm",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "GigatronGame",
         productVersion: "1.0",
-        decompressionFallback: true, 
-        devicePixelRatio: window.devicePixelRatio || 2, // DODAJ OVO ZA OŠTRINU
+        decompressionFallback: true,
+        devicePixelRatio: window.devicePixelRatio || 2, // Popravlja mutnu sliku
     };
 
     const loaderScript = document.createElement("script");
-    // Rekao si da imaš i igra.js i igra.loader.js. 
-    // Unity obično koristi loader.js, pa ćemo ciljati njega:
-    loaderScript.src = "build/" + gameName + ".loader.js";
-    
+    loaderScript.src = "build/igra.loader.js";
     loaderScript.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
             progressBar.style.width = (100 * progress) + "%";
         }).then((instance) => {
             unityInstance = instance;
             loadingBar.style.display = "none";
-        }).catch((err) => {
-            console.error("Unity Error:", err);
-            alert("Unity se buni. Proveri imena fajlova u build folderu!");
-        });
+        }).catch(err => alert("Greška pri učitavanju igre!"));
     };
     document.body.appendChild(loaderScript);
 }
 
-window.dispatchUnityScore = function(score) {
+// --- MOST IZMEĐU UNITY-JA I SAJTA ---
+window.SendScoreToDatabase = function(score) {
     currentScore = score;
     document.getElementById('game-over-box').classList.remove('hidden');
     document.getElementById('final-score-display').innerText = score;
+    
     if (typeof confetti === 'function') {
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
     }
 };
 
+// --- SNIMANJE U BAZU (TVOJA STARA LOGIKA) ---
 async function handleAuth() {
     const email = document.getElementById('auth-email').value;
-    const password = document.getElementById('auth-password').value;
     const msg = document.getElementById('auth-msg');
-    
-    if (!email || !password) { 
-        msg.innerText = "Popunite sva polja. ⚠️"; 
-        return; 
-    }
 
-    msg.innerText = "POVEZIVANJE...";
-    
-    // Pokušaj prijave
-    let { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-    
-    // Ako ne postoji, pokušaj registraciju
-    if (error) {
-        const signup = await _supabase.auth.signUp({ email, password });
-        error = signup.error;
-    }
+    if (!email) { alert("Unesi email!"); return; }
+    msg.innerText = "ČUVANJE REZULTATA...";
 
-    // ČAK I AKO IMA GREŠKE (npr. email confirmation), probaj da upišeš poene direktno
-    // jer je tabela verovatno podešena da prihvata anonimne unose (anon role)
-    await saveFinalData(email);
+    try {
+        // 1. Uzimamo stare poene
+        const { data: userRow } = await _supabase
+            .from('leaderboard')
+            .select('points')
+            .eq('email', email)
+            .maybeSingle();
+
+        const newTotal = (userRow?.points || 0) + currentScore;
+
+        // 2. Upisujemo u leaderboard (Identično tvom starom kodu)
+        const { error: lbError } = await _supabase
+            .from('leaderboard')
+            .upsert({ 
+                email: email, 
+                points: newTotal, 
+                last_scan_date: new Date().toISOString() 
+            }, { onConflict: 'email' });
+
+        if (lbError) throw lbError;
+
+        // 3. Markiramo račun kao iskorišćen
+        await _supabase.from('scanned_receipts').insert([
+            { receipt_id: scannedReceiptId, scanned_by: email }
+        ]);
+
+        msg.innerText = "USPEŠNO SAČUVANO!";
+        setTimeout(() => showLeaderboard(), 1000);
+
+    } catch (err) {
+        console.error(err);
+        msg.innerText = "GREŠKA: " + err.message;
+    }
 }
 
 async function showLeaderboard() {
     navigate('page-leaderboard');
-    const { data } = await _supabase.from('leaderboard').select('email, points').order('points', { ascending: false }).limit(10);
-    document.getElementById('lb-body').innerHTML = data.map((u, i) => `<tr><td>${i+1}.</td><td>${u.email.split('@')[0]}***</td><td>${u.points}</td></tr>`).join('');
+    const { data } = await _supabase
+        .from('leaderboard')
+        .select('email, points')
+        .order('points', { ascending: false })
+        .limit(10);
 
+    if (data) {
+        document.getElementById('lb-body').innerHTML = data.map((u, i) => 
+            `<tr><td>${i+1}.</td><td>${u.email.split('@')[0]}***</td><td>${u.points}</td></tr>`
+        ).join('');
+    }
 }
-window.SendScoreToDatabase = function(score) {
-    console.log("Stigao score iz Unity-ja:", score);
-    
-    // Pozivamo tvoju postojeću funkciju koja prikazuje Game Over box i sprema bodove
-    window.dispatchUnityScore(score);
-};
 
-// Ovo poziva Unity kada igrač izgubi život
-window.SendScoreToDatabase = function(score) {
-    console.log("Score iz Unity-ja:", score);
-    currentScore = score; // Setujemo globalnu varijablu koju tvoj saveFinalData koristi
-    
-    // Prikazujemo Game Over box koji već imaš u HTML-u
-    const gameOverBox = document.getElementById('game-over-box');
-    if (gameOverBox) {
-        gameOverBox.classList.remove('hidden');
-    }
-    
-    // Upisujemo poene u onaj tvoj span
-    const scoreDisplay = document.getElementById('final-score-display');
-    if (scoreDisplay) {
-        scoreDisplay.innerText = score;
-    }
-
-    // Isključujemo Unity canvas da ne troši resurse dok je login otvoren
-    const unityCanvas = document.getElementById('unity-canvas');
-    if (unityCanvas) unityCanvas.style.display = "none";
-};
-
-
-
-
-
-
-
-
-
-
-
-
-
+// Funkcije za skener (startScanner, onScanSuccess) ostavi iste kakve imaš...
