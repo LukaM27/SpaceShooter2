@@ -94,21 +94,67 @@ async function handleAuth() {
     const password = document.getElementById('auth-password').value;
     const msg = document.getElementById('auth-msg');
 
-    if (!email || !password) { alert("Popuni sva polja!"); return; }
-    msg.innerText = "Čuvanje...";
+    if (!email || !password) { 
+        alert("Popuni sva polja!"); 
+        return; 
+    }
     
-    let { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-    if (error) { const res = await _supabase.auth.signUp({ email, password }); data = res.data; error = res.error; }
+    msg.innerText = "Provera korisnika...";
+    msg.style.color = "var(--yellow)";
 
-    if (error) { msg.innerText = "Greška: " + error.message; return; }
+    try {
+        // 1. Pokušaj Logina
+        let { data, error } = await _supabase.auth.signInWithPassword({ email, password });
 
-    const { data: userRow } = await _supabase.from('leaderboard').select('points').eq('email', email).maybeSingle();
-    const newTotal = (userRow?.points || 0) + currentScore;
+        // 2. Ako korisnik ne postoji, pokušaj Sign Up (automatska registracija)
+        if (error && error.message === "Invalid login credentials") {
+            msg.innerText = "Pravim novi nalog...";
+            const res = await _supabase.auth.signUp({ email, password });
+            data = res.data;
+            error = res.error;
+        }
 
-    await _supabase.from('leaderboard').upsert({ email, points: newTotal, last_scan_date: new Date().toISOString() });
-    await _supabase.from('scanned_receipts').insert([{ receipt_id: scannedReceiptId, scanned_by: email }]);
+        if (error) throw error;
 
-    showLeaderboard();
+        msg.innerText = "Čuvanje rezultata...";
+
+        // 3. Uzmi stare poene (ako postoje)
+        const { data: userRow, error: fetchError } = await _supabase
+            .from('leaderboard')
+            .select('points')
+            .eq('email', email)
+            .maybeSingle();
+
+        if (fetchError) throw fetchError;
+
+        const newTotal = (userRow?.points || 0) + currentScore;
+
+        // 4. Upisivanje u leaderboard
+        const { error: upsertError } = await _supabase
+            .from('leaderboard')
+            .upsert({ 
+                email: email, 
+                points: newTotal, 
+                last_scan_date: new Date().toISOString() 
+            }, { onConflict: 'email' });
+
+        if (upsertError) throw upsertError;
+
+        // 5. Markiraj račun kao iskorišćen
+        if (scannedReceiptId) {
+            await _supabase.from('scanned_receipts').insert([
+                { receipt_id: scannedReceiptId, scanned_by: email }
+            ]);
+        }
+
+        msg.innerText = "Uspeh!";
+        setTimeout(() => showLeaderboard(), 1000);
+
+    } catch (err) {
+        console.error("Supabase Error:", err);
+        msg.innerText = "Greška: " + (err.error_description || err.message || "Mrežni problem");
+        msg.style.color = "red";
+    }
 }
 
 async function showLeaderboard() {
@@ -123,6 +169,7 @@ window.SendScoreToDatabase = function(score) {
     // Pozivamo tvoju postojeću funkciju koja prikazuje Game Over box i sprema bodove
     window.dispatchUnityScore(score);
 };
+
 
 
 
