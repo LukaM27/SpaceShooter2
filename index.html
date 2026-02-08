@@ -49,15 +49,8 @@
 
     <!-- GAME PAGE -->
     <section id="page-game" class="page">
-
-        <div class="game-header">
-            <div id="game-score">BODOVI: <span id="js-score">0</span></div>
-        </div>
-
-        <!-- UNITY CONTAINER -->
         <div id="unity-container">
             <canvas id="unity-canvas"></canvas>
-
             <div id="unity-loading-bar">
                 <div class="loading-text">UČITAVANJE...</div>
                 <div class="loading-bg">
@@ -66,13 +59,11 @@
             </div>
         </div>
 
-        <!-- GAME OVER -->
         <div id="game-over-box" class="hidden">
             <h2 style="color: var(--yellow);">KRAJ IGRE!</h2>
             <p>Osvojili ste: <strong id="final-score-display">0</strong> poena</p>
             <button class="btn" onclick="navigate('page-auth')">SNIMI REZULTAT</button>
         </div>
-
     </section>
 
     <!-- AUTH PAGE -->
@@ -90,31 +81,13 @@
     <section id="page-leaderboard" class="page">
         <h1 class="logo">RANG LISTA</h1>
         <div class="leaderboard-wrapper">
-            <table>
-                <tbody id="lb-body"></tbody>
-            </table>
+            <table><tbody id="lb-body"></tbody></table>
         </div>
         <button class="btn" onclick="location.reload()">IGRAJ PONOVO</button>
     </section>
 
 </main>
 
-<!-- UNITY RESIZE FIX -->
-<script>
-    const unityContainer = document.getElementById("unity-container");
-    const unityCanvas = document.getElementById("unity-canvas");
-
-    function resizeUnityCanvas() {
-        const rect = unityContainer.getBoundingClientRect();
-        unityCanvas.width = rect.width;
-        unityCanvas.height = rect.height;
-    }
-
-    window.addEventListener("resize", resizeUnityCanvas);
-    resizeUnityCanvas();
-</script>
-
 <script src="script.js"></script>
-
 </body>
 </html>
