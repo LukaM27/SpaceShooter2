@@ -137,15 +137,27 @@ async function handleAuth() {
 
 
 
-const container = document.getElementById("unity-container");
-const canvas = document.getElementById("unity-canvas");
-
 function resizeUnityCanvas() {
+    const container = document.getElementById("unity-container");
+    const canvas = document.getElementById("unity-canvas");
+
+    if (!container || !canvas) return;
+
     const rect = container.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
+
+    canvas.width = Math.floor(rect.width * window.devicePixelRatio);
+    canvas.height = Math.floor(rect.height * window.devicePixelRatio);
+
+    canvas.style.width = rect.width + "px";
+    canvas.style.height = rect.height + "px";
 }
 
 window.addEventListener("resize", resizeUnityCanvas);
+window.addEventListener("orientationchange", () => {
+    setTimeout(resizeUnityCanvas, 300);
+});
+
 resizeUnityCanvas();
+
+
 
