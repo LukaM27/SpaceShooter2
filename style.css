@@ -297,13 +297,22 @@ tr:first-child td {
 /* --- UNITY / GAME CONTAINER --- */
 #unity-container {
     position: relative;
-    width: min(90vw, 360px);
+    width: 90vw;
+    max-width: 360px;
     max-height: calc(100dvh - 170px);
-    aspect-ratio: 9 / 16;
     background: #000;
     border: 3px solid var(--yellow);
     border-radius: 16px;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#unity-canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
 }
 
 /* --- UNITY LOADING BAR --- */
