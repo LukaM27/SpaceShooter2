@@ -416,3 +416,43 @@ tr:first-child td {
     border-radius: 5px;
     overflow: hidden;
 }
+
+
+body {
+    overflow-x: hidden;
+}
+
+/* Page game mora da stane u viewport */
+#page-game {
+    min-height: calc(100dvh - 90px); /* header */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+/* Unity wrapper – pametno skaliranje */
+#unity-container {
+    width: min(90vw, 360px);
+    max-height: calc(100dvh - 170px); /* header + margine */
+    aspect-ratio: 9 / 16;
+}
+
+/* Ako je ekran NIZAK – smanji igru */
+@media (max-height: 700px) {
+    #unity-container {
+        width: min(85vw, 320px);
+    }
+}
+
+@media (max-height: 620px) {
+    #unity-container {
+        width: min(80vw, 280px);
+    }
+}
+
+@media (max-height: 560px) {
+    #unity-container {
+        width: min(75vw, 250px);
+    }
+}
