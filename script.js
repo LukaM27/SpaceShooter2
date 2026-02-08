@@ -2,22 +2,88 @@ const supabaseUrl = 'https://zeqzrziiligsmrqxonhj.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InplcXpyemlpbGlnc21ycXhvbmhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyNzA5MDksImV4cCI6MjA4NDg0NjkwOX0.p8utaac5OVzLUjNkhl3tdwUda0zZW34kQjFvyZVOE0s'; 
 const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
+let html5QrCode;
 let currentScore = 0;
 let scannedReceiptId = "";
-let unityInstance = null;
 
 // --- NAVIGACIJA ---
 function navigate(id) {
+    console.log("Navigacija na:", id);
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
+    const target = document.getElementById(id);
+    if (target) target.classList.add('active');
 }
 
-// --- UNITY LOADER ---
-function loadUnityGame() {
-    const canvas = document.querySelector("#unity-canvas");
-    const loadingBar = document.querySelector("#unity-loading-bar");
-    const progressBar = document.querySelector("#unity-progress-bar-full");
+// --- SKENER (POPRAVLJENO DUGME) ---
+async function startScanner() {
+    console.log("Dugme kliknuto, pokrećem skener...");
+    const status = document.getElementById('scan-status');
+    
+    try {
+        // Ako je skener već bio pokrenut, zaustavi ga pre ponovnog starta
+        if (html5QrCode) {
+            await html5QrCode.stop().catch(() => {});
+        }
+        
+        html5QrCode = new Html5Qrcode("reader");
+        
+        const config = { fps: 20, qrbox: 250 };
+        
+        await html5QrCode.start(
+            { facingMode: "environment" }, 
+            config, 
+            onScanSuccess
+        );
+        
+        status.innerText = "Skenirajte račun...";
+        status.style.color = "var(--yellow)";
+        
+    } catch (err) {
+        console.error("Greška sa kamerom:", err);
+        status.innerText = "Greška: Dozvolite kameru u podešavanjima!";
+        status.style.color = "red";
+    }
+}
 
+async function onScanSuccess(decodedText) {
+    console.log("Skenirano:", decodedText);
+    
+    // Provera Gigatron PIB-a
+    if (!decodedText.includes("102778428")) {
+        alert("Ovo nije Gigatronov račun!");
+        return;
+    }
+
+    scannedReceiptId = new URLSearchParams(decodedText.split('?')[1]).get('vl') || decodedText.slice(-30);
+    
+    // Provera duplikata u bazi
+    const { data: existing } = await _supabase
+        .from('scanned_receipts')
+        .select('receipt_id')
+        .eq('receipt_id', scannedReceiptId)
+        .maybeSingle();
+
+    if (existing) {
+        alert("Ovaj račun je već iskorišćen za igru!");
+        return;
+    }
+
+    // Uspeh - gasi kameru i pali igru
+    if (html5QrCode) {
+        await html5QrCode.stop();
+    }
+    
+    navigate('page-game');
+    loadUnityGame();
+}
+
+// --- UNITY ---
+function loadUnityGame() {
+    console.log("Učitavam Unity instancu...");
+    const canvas = document.querySelector("#unity-canvas");
+    const loadingBar = document.getElementById("unity-loading-bar");
+
+    // PROVERI DA LI TI SE FAJLOVI ZOVU 'igra' ILI DRUGAČIJE!
     const config = {
         dataUrl: "build/igra.data",
         frameworkUrl: "build/igra.framework.js",
@@ -27,72 +93,60 @@ function loadUnityGame() {
         productName: "GigatronGame",
         productVersion: "1.0",
         decompressionFallback: true,
-        devicePixelRatio: window.devicePixelRatio || 2, // Popravlja mutnu sliku
+        devicePixelRatio: window.devicePixelRatio || 2,
     };
 
     const loaderScript = document.createElement("script");
-    loaderScript.src = "build/igra.loader.js";
+    loaderScript.src = "build/igra.loader.js"; 
     loaderScript.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
-            progressBar.style.width = (100 * progress) + "%";
+            document.getElementById("unity-progress-bar-full").style.width = (100 * progress) + "%";
         }).then((instance) => {
-            unityInstance = instance;
+            console.log("Unity učitan!");
             loadingBar.style.display = "none";
-        }).catch(err => alert("Greška pri učitavanju igre!"));
+        }).catch(err => console.error("Unity Load Error:", err));
     };
     document.body.appendChild(loaderScript);
 }
 
-// --- MOST IZMEĐU UNITY-JA I SAJTA ---
+// Ovu funkciju poziva tvoj Unity preko .jslib mosta
 window.SendScoreToDatabase = function(score) {
+    console.log("Bodovi stigli iz Unity-ja:", score);
     currentScore = score;
     document.getElementById('game-over-box').classList.remove('hidden');
     document.getElementById('final-score-display').innerText = score;
-    
-    if (typeof confetti === 'function') {
-        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-    }
 };
 
-// --- SNIMANJE U BAZU (TVOJA STARA LOGIKA) ---
+// --- SNIMANJE U BAZU ---
 async function handleAuth() {
     const email = document.getElementById('auth-email').value;
     const msg = document.getElementById('auth-msg');
 
     if (!email) { alert("Unesi email!"); return; }
-    msg.innerText = "ČUVANJE REZULTATA...";
+    
+    msg.innerText = "ČUVAM REZULTAT...";
 
     try {
-        // 1. Uzimamo stare poene
-        const { data: userRow } = await _supabase
-            .from('leaderboard')
-            .select('points')
-            .eq('email', email)
-            .maybeSingle();
-
-        const newTotal = (userRow?.points || 0) + currentScore;
-
-        // 2. Upisujemo u leaderboard (Identično tvom starom kodu)
-        const { error: lbError } = await _supabase
+        const { error } = await _supabase
             .from('leaderboard')
             .upsert({ 
                 email: email, 
-                points: newTotal, 
+                points: currentScore, 
                 last_scan_date: new Date().toISOString() 
             }, { onConflict: 'email' });
 
-        if (lbError) throw lbError;
+        if (error) throw error;
 
-        // 3. Markiramo račun kao iskorišćen
+        // Dodaj račun u bazu iskorišćenih
         await _supabase.from('scanned_receipts').insert([
             { receipt_id: scannedReceiptId, scanned_by: email }
         ]);
 
-        msg.innerText = "USPEŠNO SAČUVANO!";
+        msg.innerText = "USPEŠNO!";
         setTimeout(() => showLeaderboard(), 1000);
 
     } catch (err) {
-        console.error(err);
+        console.error("Greška pri upisu:", err);
         msg.innerText = "GREŠKA: " + err.message;
     }
 }
@@ -111,5 +165,3 @@ async function showLeaderboard() {
         ).join('');
     }
 }
-
-// Funkcije za skener (startScanner, onScanSuccess) ostavi iste kakve imaš...
