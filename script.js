@@ -143,21 +143,20 @@ function resizeUnityCanvas() {
 
     if (!container || !canvas) return;
 
-    const rect = container.getBoundingClientRect();
+    const containerRatio = container.clientWidth / container.clientHeight;
+    const unityRatio = 9 / 16;
 
-    canvas.width = Math.floor(rect.width * window.devicePixelRatio);
-    canvas.height = Math.floor(rect.height * window.devicePixelRatio);
-
-    canvas.style.width = rect.width + "px";
-    canvas.style.height = rect.height + "px";
+    if (containerRatio > unityRatio) {
+        // container širi više horizontalno → ograniči width
+        canvas.style.height = "100%";
+        canvas.style.width = "auto";
+    } else {
+        // container više vertikalno → ograniči height
+        canvas.style.width = "100%";
+        canvas.style.height = "auto";
+    }
 }
 
-window.addEventListener("resize", resizeUnityCanvas);
-window.addEventListener("orientationchange", () => {
-    setTimeout(resizeUnityCanvas, 300);
-});
-
-resizeUnityCanvas();
 
 
 
