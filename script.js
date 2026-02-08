@@ -2,7 +2,6 @@ const supabaseUrl = 'https://zeqzrziiligsmrqxonhj.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InplcXpyemlpbGlnc21ycXhvbmhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyNzA5MDksImV4cCI6MjA4NDg0NjkwOX0.p8utaac5OVzLUjNkhl3tdwUda0zZW34kQjFvyZVOE0s'; 
 const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-let html5QrCode;
 let currentScore = 0;
 let scannedReceiptId = "";
 let unityInstance = null;
@@ -10,45 +9,10 @@ let unityInstance = null;
 // --- NAVIGACIJA ---
 function navigate(id) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const target = document.getElementById(id);
-    if (target) target.classList.add('active');
+    document.getElementById(id).classList.add('active');
 }
 
-// --- SKENER ---
-async function startScanner() {
-    navigate('page-scan');
-    try {
-        if (html5QrCode) {
-            await html5QrCode.stop().catch(() => {});
-            await html5QrCode.clear();
-        }
-        html5QrCode = new Html5Qrcode("reader");
-        await html5QrCode.start({ facingMode: "environment" }, { fps: 20, qrbox: 250 }, onScanSuccess);
-    } catch (err) {
-        document.getElementById('scan-status').innerText = "Greška sa kamerom.";
-    }
-}
-
-async function onScanSuccess(decodedText) {
-    if (!decodedText.includes("102778428")) {
-        alert("Račun nije Gigatronov!");
-        return;
-    }
-    scannedReceiptId = new URLSearchParams(decodedText.split('?')[1]).get('vl') || decodedText.slice(-30);
-    
-    // Provera duplikata
-    const { data: existing } = await _supabase.from('scanned_receipts').select('receipt_id').eq('receipt_id', scannedReceiptId).maybeSingle();
-    if (existing) {
-        alert("Račun je već iskorišćen!");
-        return;
-    }
-
-    if (html5QrCode) await html5QrCode.stop();
-    navigate('page-game');
-    loadUnityGame();
-}
-
-// --- UNITY ---
+// --- UNITY LOADER ---
 function loadUnityGame() {
     const canvas = document.querySelector("#unity-canvas");
     const loadingBar = document.querySelector("#unity-loading-bar");
@@ -63,7 +27,7 @@ function loadUnityGame() {
         productName: "GigatronGame",
         productVersion: "1.0",
         decompressionFallback: true,
-        devicePixelRatio: window.devicePixelRatio || 2,
+        devicePixelRatio: window.devicePixelRatio || 2, // Popravlja mutnu sliku
     };
 
     const loaderScript = document.createElement("script");
@@ -74,42 +38,42 @@ function loadUnityGame() {
         }).then((instance) => {
             unityInstance = instance;
             loadingBar.style.display = "none";
-        }).catch(err => console.error(err));
+        }).catch(err => alert("Greška pri učitavanju igre!"));
     };
     document.body.appendChild(loaderScript);
 }
 
-// Ovu funkciju poziva tvoj Unity JSLIB
+// --- MOST IZMEĐU UNITY-JA I SAJTA ---
 window.SendScoreToDatabase = function(score) {
     currentScore = score;
     document.getElementById('game-over-box').classList.remove('hidden');
     document.getElementById('final-score-display').innerText = score;
+    
+    if (typeof confetti === 'function') {
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+    }
 };
 
-// --- SNIMANJE (BEZ AUTH FILTRIRANJA - DIREKTNO) ---
+// --- SNIMANJE U BAZU (TVOJA STARA LOGIKA) ---
 async function handleAuth() {
     const email = document.getElementById('auth-email').value;
     const msg = document.getElementById('auth-msg');
 
     if (!email) { alert("Unesi email!"); return; }
-    
-    msg.innerText = "ŠALJEM PODATKE...";
-    msg.style.color = "white";
+    msg.innerText = "ČUVANJE REZULTATA...";
 
     try {
-        // 1. Uzmi trenutne poene (ako postoje)
-        const { data: userRow, error: fetchError } = await _supabase
+        // 1. Uzimamo stare poene
+        const { data: userRow } = await _supabase
             .from('leaderboard')
             .select('points')
             .eq('email', email)
             .maybeSingle();
 
-        if (fetchError) throw fetchError;
-
         const newTotal = (userRow?.points || 0) + currentScore;
 
-        // 2. Upis u tabelu (UPSERT)
-        const { error: upsertError } = await _supabase
+        // 2. Upisujemo u leaderboard (Identično tvom starom kodu)
+        const { error: lbError } = await _supabase
             .from('leaderboard')
             .upsert({ 
                 email: email, 
@@ -117,9 +81,9 @@ async function handleAuth() {
                 last_scan_date: new Date().toISOString() 
             }, { onConflict: 'email' });
 
-        if (upsertError) throw upsertError;
+        if (lbError) throw lbError;
 
-        // 3. Markiraj račun kao iskorišćen
+        // 3. Markiramo račun kao iskorišćen
         await _supabase.from('scanned_receipts').insert([
             { receipt_id: scannedReceiptId, scanned_by: email }
         ]);
@@ -128,18 +92,24 @@ async function handleAuth() {
         setTimeout(() => showLeaderboard(), 1000);
 
     } catch (err) {
-        console.error("Greška:", err);
+        console.error(err);
         msg.innerText = "GREŠKA: " + err.message;
-        msg.style.color = "red";
     }
 }
 
 async function showLeaderboard() {
     navigate('page-leaderboard');
-    const { data } = await _supabase.from('leaderboard').select('email, points').order('points', { ascending: false }).limit(10);
+    const { data } = await _supabase
+        .from('leaderboard')
+        .select('email, points')
+        .order('points', { ascending: false })
+        .limit(10);
+
     if (data) {
         document.getElementById('lb-body').innerHTML = data.map((u, i) => 
             `<tr><td>${i+1}.</td><td>${u.email.split('@')[0]}***</td><td>${u.points}</td></tr>`
         ).join('');
     }
 }
+
+// Funkcije za skener (startScanner, onScanSuccess) ostavi iste kakve imaš...
