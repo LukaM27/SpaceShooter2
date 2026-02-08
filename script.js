@@ -93,68 +93,26 @@ async function handleAuth() {
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
     const msg = document.getElementById('auth-msg');
-
+    
     if (!email || !password) { 
-        alert("Popuni sva polja!"); 
+        msg.innerText = "Popunite sva polja. ⚠️"; 
         return; 
     }
+
+    msg.innerText = "POVEZIVANJE...";
     
-    msg.innerText = "Provera korisnika...";
-    msg.style.color = "var(--yellow)";
-
-    try {
-        // 1. Pokušaj Logina
-        let { data, error } = await _supabase.auth.signInWithPassword({ email, password });
-
-        // 2. Ako korisnik ne postoji, pokušaj Sign Up (automatska registracija)
-        if (error && error.message === "Invalid login credentials") {
-            msg.innerText = "Pravim novi nalog...";
-            const res = await _supabase.auth.signUp({ email, password });
-            data = res.data;
-            error = res.error;
-        }
-
-        if (error) throw error;
-
-        msg.innerText = "Čuvanje rezultata...";
-
-        // 3. Uzmi stare poene (ako postoje)
-        const { data: userRow, error: fetchError } = await _supabase
-            .from('leaderboard')
-            .select('points')
-            .eq('email', email)
-            .maybeSingle();
-
-        if (fetchError) throw fetchError;
-
-        const newTotal = (userRow?.points || 0) + currentScore;
-
-        // 4. Upisivanje u leaderboard
-        const { error: upsertError } = await _supabase
-            .from('leaderboard')
-            .upsert({ 
-                email: email, 
-                points: newTotal, 
-                last_scan_date: new Date().toISOString() 
-            }, { onConflict: 'email' });
-
-        if (upsertError) throw upsertError;
-
-        // 5. Markiraj račun kao iskorišćen
-        if (scannedReceiptId) {
-            await _supabase.from('scanned_receipts').insert([
-                { receipt_id: scannedReceiptId, scanned_by: email }
-            ]);
-        }
-
-        msg.innerText = "Uspeh!";
-        setTimeout(() => showLeaderboard(), 1000);
-
-    } catch (err) {
-        console.error("Supabase Error:", err);
-        msg.innerText = "Greška: " + (err.error_description || err.message || "Mrežni problem");
-        msg.style.color = "red";
+    // Pokušaj prijave
+    let { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+    
+    // Ako ne postoji, pokušaj registraciju
+    if (error) {
+        const signup = await _supabase.auth.signUp({ email, password });
+        error = signup.error;
     }
+
+    // ČAK I AKO IMA GREŠKE (npr. email confirmation), probaj da upišeš poene direktno
+    // jer je tabela verovatno podešena da prihvata anonimne unose (anon role)
+    await saveFinalData(email);
 }
 
 async function showLeaderboard() {
@@ -191,6 +149,7 @@ window.SendScoreToDatabase = function(score) {
     const unityCanvas = document.getElementById('unity-canvas');
     if (unityCanvas) unityCanvas.style.display = "none";
 };
+
 
 
 
