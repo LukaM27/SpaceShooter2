@@ -170,6 +170,28 @@ window.SendScoreToDatabase = function(score) {
     window.dispatchUnityScore(score);
 };
 
+// Ovo poziva Unity kada igrač izgubi život
+window.SendScoreToDatabase = function(score) {
+    console.log("Score iz Unity-ja:", score);
+    currentScore = score; // Setujemo globalnu varijablu koju tvoj saveFinalData koristi
+    
+    // Prikazujemo Game Over box koji već imaš u HTML-u
+    const gameOverBox = document.getElementById('game-over-box');
+    if (gameOverBox) {
+        gameOverBox.classList.remove('hidden');
+    }
+    
+    // Upisujemo poene u onaj tvoj span
+    const scoreDisplay = document.getElementById('final-score-display');
+    if (scoreDisplay) {
+        scoreDisplay.innerText = score;
+    }
+
+    // Isključujemo Unity canvas da ne troši resurse dok je login otvoren
+    const unityCanvas = document.getElementById('unity-canvas');
+    if (unityCanvas) unityCanvas.style.display = "none";
+};
+
 
 
 
