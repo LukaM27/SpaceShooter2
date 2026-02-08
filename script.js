@@ -49,7 +49,7 @@ function loadUnityGame() {
 
     const gameName = "igra"; 
 
-    const config = {
+   const config = {
         dataUrl: "build/" + gameName + ".data",
         frameworkUrl: "build/" + gameName + ".framework.js",
         codeUrl: "build/" + gameName + ".wasm",
@@ -57,8 +57,7 @@ function loadUnityGame() {
         companyName: "DefaultCompany",
         productName: "GigatronGame",
         productVersion: "1.0",
-        // Dodajemo ovo za svaki slučaj da browser ne brlja
-        decompressionFallback: true,
+        decompressionFallback: false, // <--- OVO STAVI NA FALSE
     };
 
     const loaderScript = document.createElement("script");
@@ -130,6 +129,7 @@ window.SendScoreToDatabase = function(score) {
     }).then(response => console.log("Sačuvano u bazi!"));
     */
 };
+
 
 
 
