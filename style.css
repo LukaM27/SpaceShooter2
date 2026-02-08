@@ -1,6 +1,74 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap');
 
-/* --- VARIABLES --- */
+/* Stil za INFO dugme u headeru */
+.info-circle {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    border: 2px solid var(--yellow);
+    background: transparent;
+    color: var(--yellow);
+    font-family: 'Orbitron', sans-serif;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+}
+
+/* Sijanje za prvog na listi */
+#lb-body tr:first-child {
+    outline: 2px solid var(--yellow);
+    outline-offset: -2px;
+    background: rgba(255, 215, 0, 0.1) !important;
+    box-shadow: inset 0 0 15px rgba(255, 215, 0, 0.2), 0 0 20px rgba(255, 215, 0, 0.1);
+}
+
+/* Modalni prozor */
+.modal {
+    position: fixed;
+    z-index: 3000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.info-item {
+    text-align: left;
+    margin: 15px 0;
+    border-bottom: 1px solid #333;
+    padding-bottom: 5px;
+}
+
+.info-item label {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--yellow);
+    font-family: 'Orbitron';
+}
+
+.info-item span {
+    font-size: 0.95rem;
+    color: #fff;
+}
+
+.close-modal {
+    position: absolute;
+    right: 20px;
+    top: 10px;
+    font-size: 30px;
+    cursor: pointer;
+    color: #555;
+}
+
 :root {
     --yellow: #FFD700;
     --black: #0b0b0b;
@@ -8,22 +76,26 @@
     --dark-gray: #121212;
     --white: #ffffff;
     --red: #ff4757;
+    --green: #2ed573;
+    --glass: rgba(255, 255, 255, 0.05);
 }
 
-/* --- GLOBAL RESET --- */
-* { box-sizing: border-box; }
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
 body {
-    margin: 0;
-    font-family: 'Roboto', sans-serif;
     background: var(--black);
     background-image: radial-gradient(circle at top, #1a1a1a 0%, #0b0b0b 100%);
     color: var(--white);
-    min-height: 100vh;
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
     text-align: center;
     overflow-x: hidden;
+    min-height: 100vh;
 }
 
-/* --- HEADER --- */
 header {
     background: rgba(18, 18, 18, 0.9);
     backdrop-filter: blur(10px);
@@ -35,140 +107,133 @@ header {
     box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
 
-/* --- LOGO --- */
 .logo {
     font-family: 'Orbitron', sans-serif;
     color: var(--yellow);
-    font-weight: 700;
     letter-spacing: 2px;
-    text-shadow: 0 0 10px rgba(255,215,0,0.3);
+    font-weight: 700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
 }
 
-/* --- INFO BUTTON --- */
-.info-circle {
-    position: absolute;
-    top: 50%;
-    right: 20px;
-    transform: translateY(-50%);
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    border: 2px solid var(--yellow);
-    background: transparent;
-    color: var(--yellow);
-    font-family: 'Orbitron';
-    font-weight: bold;
-    cursor: pointer;
-}
-
-/* --- PAGE LAYOUT --- */
 .page {
     display: none;
+    padding: 30px 20px;
     flex-direction: column;
     align-items: center;
-    min-height: calc(100vh - 90px);
-    padding: 20px;
+    min-height: 85vh;
+    animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .page.active { display: flex; }
 
-/* --- UNITY CONTAINER --- */
-#unity-container {
+/* SCANNER - KOCKA */
+#reader-container {
+    width: 280px;
+    height: 280px;
+    border: 4px solid var(--yellow);
+    margin: 20px auto;
     position: relative;
-    width: 90vw;
-    max-width: 360px;
-    height: calc(90vw * 16 / 9); /* maintain 9:16 ratio */
-    max-height: 100vh;
+    overflow: hidden;
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.2);
+    border-radius: 24px;
     background: #000;
-    border: 3px solid var(--yellow);
-    border-radius: 16px;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
-#unity-canvas {
-    width: 100%;
-    height: 100%;
-    object-fit: contain; /* preserves aspect ratio */
+/* Animacija vibracije za grešku */
+.error-shake { animation: shake 0.4s focus; border-color: var(--red) !important; }
+
+@keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    75% { transform: translateX(8px); }
 }
 
-/* --- UNITY LOADING BAR --- */
-#unity-loading-bar {
+#reader video { object-fit: cover !important; width: 100% !important; height: 100% !important; }
+#reader { width: 100% !important; height: 100% !important; }
+
+.scanner-line {
     position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0,0,0,0.3);
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(to right, transparent, var(--yellow), transparent);
+    animation: scanMove 2s infinite linear;
     z-index: 10;
+    pointer-events: none;
+    box-shadow: 0 0 15px var(--yellow);
 }
 
-#unity-loading-bar .loading-text {
-    color: var(--yellow);
-    font-family: 'Orbitron';
-    font-size: 10px;
-    margin-bottom: 5px;
+@keyframes scanMove {
+    0% { top: 0; }
+    100% { top: 100%; }
 }
 
-#unity-loading-bar .loading-bg {
-    width: 80%;
-    height: 12px;
-    background: #111;
-    border-radius: 6px;
-    overflow: hidden;
-}
-
-#unity-progress-bar-full {
-    width: 0%;
-    height: 100%;
-    background: var(--yellow);
-    transition: width 0.15s linear;
-}
-
-/* --- GAME OVER POPUP --- */
-#game-over-box {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(5,5,5,0.98);
-    backdrop-filter: blur(15px);
-    padding: 40px 30px;
-    border-radius: 25px;
-    border: 3px solid var(--yellow);
-    z-index: 2000;
-    width: 90%;
-    max-width: 320px;
-}
-
-/* --- BUTTONS --- */
+/* DUGMIĆI */
 .btn {
     background: var(--yellow);
     color: #000;
     border: none;
     padding: 16px 35px;
-    font-family: 'Orbitron';
     font-weight: 700;
-    border-radius: 12px;
-    margin-top: 20px;
+    font-family: 'Orbitron', sans-serif;
     cursor: pointer;
+    margin-top: 20px;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    text-transform: uppercase;
     box-shadow: 0 5px 0 #b89b00;
+    letter-spacing: 1px;
     width: 100%;
     max-width: 280px;
 }
 
-.btn:active { box-shadow: 0 2px 0 #b89b00; transform: translateY(3px); }
+.btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #b89b00; }
 
-/* --- AUTH INPUTS --- */
+#scan-status {
+    margin-top: 25px;
+    color: var(--yellow);
+    font-weight: 700;
+    font-family: 'Orbitron', sans-serif;
+    min-height: 1.5em;
+    padding: 10px;
+    font-size: 14px;
+}
+
+/* IGRA */
+#game-canvas {
+    border: 3px solid var(--yellow);
+    background: #050505;
+    touch-action: none;
+    border-radius: 16px;
+    max-width: 100%;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    max-width: 320px;
+    margin-bottom: 20px;
+    color: var(--yellow);
+    font-family: 'Orbitron';
+    font-size: 14px;
+    padding: 0 10px;
+}
+
+/* AUTH / LOGIN */
 .auth-container {
     background: var(--gray);
     background-image: linear-gradient(145deg, #1e1e1e, #141414);
     padding: 35px 25px;
     border-radius: 20px;
-    border: 1px solid rgba(255,215,0,0.1);
+    border: 1px solid rgba(255, 215, 0, 0.1);
     width: 100%;
     max-width: 340px;
     margin-top: 20px;
@@ -191,57 +256,59 @@ input:focus {
     border-color: var(--yellow);
     background: #050505;
     outline: none;
-    box-shadow: 0 0 10px rgba(255,215,0,0.1);
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
 }
 
-/* --- LEADERBOARD --- */
+/* LEADERBOARD */
 .leaderboard-wrapper {
     width: 100%;
     max-width: 360px;
     margin-top: 20px;
-    background: #121212;
+    background: var(--dark-gray);
     border-radius: 20px;
     overflow: hidden;
     border: 1px solid #333;
     box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-th {
-    background: #1e1e1e;
-    color: var(--yellow);
-    padding: 18px;
-    font-family: 'Orbitron';
-    font-size: 12px;
-}
-
-td {
-    padding: 16px;
-    border-bottom: 1px solid #252525;
-    font-size: 15px;
-}
-
+table { width: 100%; border-collapse: collapse; }
+th { background: #1e1e1e; color: var(--yellow); padding: 18px; font-family: 'Orbitron', sans-serif; font-size: 12px; letter-spacing: 1px; }
+td { padding: 16px; border-bottom: 1px solid #252525; font-size: 15px; }
 tr:nth-child(even) { background: #151515; }
 tr:hover { background: #1a1a1a; }
-tr:first-child td { color: var(--yellow); font-weight:700; font-size:18px; }
+tr:last-child td { border-bottom: none; }
+tr:first-child td { color: var(--yellow); font-weight: 700; font-size: 18px; }
 
-/* --- SHIMMER EFFECT --- */
+/* GAME OVER POPUP */
+#game-over-box {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(5, 5, 5, 0.98);
+    backdrop-filter: blur(15px);
+    padding: 40px 30px;
+    border-radius: 25px;
+    border: 3px solid var(--yellow);
+    z-index: 2000;
+    width: 90%;
+    max-width: 320px;
+    box-shadow: 0 0 100px rgba(0,0,0,0.8);
+}
+
+/* Shiny box */
 .shiny-box {
     position: relative;
     padding: 10px 20px;
     border: 2px solid var(--yellow);
     border-radius: 8px;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0, 0, 0, 0.5);
     overflow: hidden;
     display: inline-block;
     box-shadow: 0 0 15px rgba(255,215,0,0.2);
-    animation: borderGlow 2s infinite alternate;
 }
 
+/* Shimmer */
 .shimmer {
     position: absolute;
     top: 0;
@@ -253,33 +320,10 @@ tr:first-child td { color: var(--yellow); font-weight:700; font-size:18px; }
     animation: shineSweep 3s infinite ease-in-out;
 }
 
-<<<<<<< HEAD
-@keyframes shineSweep { 0%{left:-150%;} 50%{left:150%;} 100%{left:150%;} }
-@keyframes borderGlow { from {box-shadow:0 0 10px rgba(255,215,0,0.2);} to{box-shadow:0 0 20px rgba(255,215,0,0.5); border-color:#fff;} }
-=======
-/* Loading overlay */
-#unity-loading-bar {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-}
+@keyframes shineSweep { 0%{left:-150%;}50%{left:150%;}100%{left:150%;} }
 
-.loading-text {
-    color: var(--yellow);
-    font-family: 'Orbitron';
-    font-size: 10px;
-    margin-bottom: 6px;
-}
+.shiny-box { animation: borderGlow 2s infinite alternate; }
 
-.loading-bg {
-    width: 80%;
-    height: 10px;
-    background: #222;
-    border-radius: 5px;
-    overflow: hidden;
-}
->>>>>>> parent of 1cb5298 (responsive style.css)
+@keyframes borderGlow { from{box-shadow:0 0 10px rgba(255,215,0,0.2);} to{box-shadow:0 0 20px rgba(255,215,0,0.5); border-color:#fff;} }
+
+.hidden { display: none !important; }
