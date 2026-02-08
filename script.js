@@ -117,6 +117,19 @@ async function showLeaderboard() {
     document.getElementById('lb-body').innerHTML = data.map((u, i) => `<tr><td>${i+1}.</td><td>${u.email.split('@')[0]}***</td><td>${u.points}</td></tr>`).join('');
 
 }
+window.SendScoreToDatabase = function(score) {
+    console.log("Stigao score iz Unity-ja:", score);
+    
+    // OVDE DODAJ SVOJ KOD ZA BAZU
+    // Na primer, ako koristiš fetch da pošalješ na svoj server:
+    /*
+    fetch('TVOJ_API_LINK', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ points: score })
+    }).then(response => console.log("Sačuvano u bazi!"));
+    */
+};
 
 
 
