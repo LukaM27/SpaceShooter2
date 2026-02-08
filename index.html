@@ -16,7 +16,7 @@
     <div class="logo-box">
         <div class="shiny-box">
             <div class="logo">
-                GIGATRON <span style="color: #fff;">SCAN<font style="color:rgba(255, 215, 0, 1)">2</font>WIN</span>
+                GIGATRON <span style="color: #fff;">SCAN<span style="color:rgba(255, 215, 0, 1)">2</span>WIN</span>
             </div>
             <div class="shimmer"></div>
         </div>
@@ -40,12 +40,13 @@
         <div class="game-header">
             <div id="game-score">BODOVI: <span id="js-score">0</span></div>
         </div>
-        <div id="unity-container" style="position: relative; width: 320px; height: 450px; background: #000; border: 3px solid var(--yellow); border-radius: 16px;">
-            <canvas id="unity-canvas" style="width: 100%; height: 100%;"></canvas>
-            <div id="unity-loading-bar" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80%;">
-                <div style="color: var(--yellow); font-family: 'Orbitron'; font-size: 10px; margin-bottom: 5px;">UCITAVANJE...</div>
-                <div style="height: 10px; background: #222; border-radius: 5px; overflow: hidden;">
-                    <div id="unity-progress-bar-full" style="width: 0%; height: 100%; background: var(--yellow);"></div>
+        
+        <div id="unity-container" class="unity-responsive-wrapper">
+            <canvas id="unity-canvas"></canvas>
+            <div id="unity-loading-bar">
+                <div class="loading-label">UCITAVANJE...</div>
+                <div class="progress-bar-bg">
+                    <div id="unity-progress-bar-full"></div>
                 </div>
             </div>
         </div>
