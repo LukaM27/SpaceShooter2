@@ -134,3 +134,18 @@ async function handleAuth() {
         msg.innerText = "Greška: " + err.message;
     }
 }
+
+
+
+const container = document.getElementById("unity-container");
+const canvas = document.getElementById("unity-canvas");
+
+function resizeUnityCanvas() {
+    const rect = container.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+}
+
+window.addEventListener("resize", resizeUnityCanvas);
+resizeUnityCanvas();
+
