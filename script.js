@@ -57,8 +57,8 @@ function loadUnityGame() {
         companyName: "DefaultCompany",
         productName: "GigatronGame",
         productVersion: "1.0",
-        // OBAVEZNO VRATI NA TRUE DA BI SE POKRENULO NA TELEFONU
         decompressionFallback: true, 
+        devicePixelRatio: window.devicePixelRatio || 2, // DODAJ OVO ZA OŠTRINU
     };
 
     const loaderScript = document.createElement("script");
@@ -120,16 +120,10 @@ async function showLeaderboard() {
 window.SendScoreToDatabase = function(score) {
     console.log("Stigao score iz Unity-ja:", score);
     
-    // OVDE DODAJ SVOJ KOD ZA BAZU
-    // Na primer, ako koristiš fetch da pošalješ na svoj server:
-    /*
-    fetch('TVOJ_API_LINK', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ points: score })
-    }).then(response => console.log("Sačuvano u bazi!"));
-    */
+    // Pozivamo tvoju postojeću funkciju koja prikazuje Game Over box i sprema bodove
+    window.dispatchUnityScore(score);
 };
+
 
 
 
