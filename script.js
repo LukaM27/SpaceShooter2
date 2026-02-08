@@ -57,7 +57,7 @@ function loadUnityGame() {
         companyName: "DefaultCompany",
         productName: "GigatronGame",
         productVersion: "1.0",
-        decompressionFallback: true, // <--- OVO STAVI NA FALSE
+        decompressionFallback: false, // <--- OVO STAVI NA FALSE
     };
 
     const loaderScript = document.createElement("script");
@@ -129,6 +129,7 @@ window.SendScoreToDatabase = function(score) {
     }).then(response => console.log("Sačuvano u bazi!"));
     */
 };
+
 
 
 
