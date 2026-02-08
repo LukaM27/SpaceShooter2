@@ -135,28 +135,14 @@ async function handleAuth() {
     }
 }
 
-
+const container = document.getElementById("unity-container");
+const canvas = document.getElementById("unity-canvas");
 
 function resizeUnityCanvas() {
-    const container = document.getElementById("unity-container");
-    const canvas = document.getElementById("unity-canvas");
-
-    if (!container || !canvas) return;
-
-    const containerRatio = container.clientWidth / container.clientHeight;
-    const unityRatio = 9 / 16;
-
-    if (containerRatio > unityRatio) {
-        // container širi više horizontalno → ograniči width
-        canvas.style.height = "100%";
-        canvas.style.width = "auto";
-    } else {
-        // container više vertikalno → ograniči height
-        canvas.style.width = "100%";
-        canvas.style.height = "auto";
-    }
+    const rect = container.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
 }
 
-
-
-
+window.addEventListener("resize", resizeUnityCanvas);
+resizeUnityCanvas();
