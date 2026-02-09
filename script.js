@@ -141,44 +141,54 @@ window.SendScoreToDatabase = function(score) {
 };
 
 async function handleAuth() {
-    const email = document.getElementById('auth-email').value;
+    const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value;
     const msg = document.getElementById('auth-msg');
 
     if (!email || !password) {
-        alert("Molimo unesite email i lozinku!");
+        alert("Unesite email i lozinku da biste sačuvali bodove!");
         return;
     }
 
-    msg.innerText = "Sakupljam tvoje poene...";
+    msg.innerText = "Provera identiteta...";
     msg.style.color = "var(--yellow)";
 
     try {
-        // 1. Prijava/Registracija (ostaje isto)
-        const { data: authData, error: authError } = await _supabase.auth.signUp({
+        // 1. Pokušavamo prvo PRIJAVU (SignIn)
+        let { data: authData, error: signInError } = await _supabase.auth.signInWithPassword({
             email: email,
             password: password,
         });
-        if (authError) throw authError;
 
-        // --- NOVO: LOGIKA ZA SABIRANJE ---
-        
-        // 2. Proveri da li korisnik već postoji u leaderboardu i uzmi trenutne poene
+        // 2. Ako prijava ne uspe jer korisnik ne postoji, onda radimo REGISTRACIJU (SignUp)
+        if (signInError) {
+            if (signInError.message.includes("Invalid login credentials")) {
+                // Ako je korisnik uneo POGREŠNU lozinku za postojeći mejl
+                throw new Error("Pogrešna lozinka za ovaj email!");
+            } else {
+                // Ako korisnik uopšte ne postoji, registruj ga
+                console.log("Korisnik ne postoji, registrujem novi nalog...");
+                const { data: signUpData, error: signUpError } = await _supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                });
+                if (signUpError) throw signUpError;
+                authData = signUpData;
+            }
+        }
+
+        // --- AKO SMO OVDE, ZNAČI DA JE LOZINKA TAČNA ILI JE NALOG NOVOSTVOREN ---
+
+        // 3. Uzmi stare poene (Logika sabiranja koju smo uveli)
         const { data: existingEntry } = await _supabase
             .from('leaderboard')
             .select('points')
             .eq('email', email)
             .maybeSingle();
 
-        let totalPoints = currentScore; // Počni sa trenutnim rezultatom
+        let totalPoints = currentScore + (existingEntry ? existingEntry.points : 0);
 
-        if (existingEntry) {
-            // Ako već ima poene, dodaj trenutne na stare
-            totalPoints = existingEntry.points + currentScore;
-            console.log(`Stari poeni: ${existingEntry.points}, Novi: ${currentScore}, Ukupno: ${totalPoints}`);
-        }
-
-        // 3. Sačuvaj novi, sabrani rezultat
+        // 4. Upsert u leaderboard
         const { error: lbError } = await _supabase
             .from('leaderboard')
             .upsert({ 
@@ -189,22 +199,22 @@ async function handleAuth() {
 
         if (lbError) throw lbError;
 
-        // 4. Ažuriraj email kod računa (ono što smo radili ranije)
+        // 5. Veži račun za email
         await _supabase
             .from('scanned_receipts')
             .update({ scanned_by: email })
             .eq('receipt_id', scannedReceiptId);
 
-        msg.innerText = `Uspešno! Tvoj novi ukupni skor je: ${totalPoints}`;
+        msg.innerText = "Uspešno! Poeni su dodati na tvoj nalog.";
         msg.style.color = "var(--green)";
         
         setTimeout(async () => {
             await showLeaderboard();
             navigate('page-leaderboard');
-        }, 2500);
+        }, 2000);
 
     } catch (err) {
-        console.error("Greška:", err);
+        console.error("Auth Error:", err);
         msg.innerText = "Greška: " + err.message;
         msg.style.color = "var(--red)";
     }
@@ -255,6 +265,7 @@ async function showLeaderboard() {
         lbBody.innerHTML = '<tr><td colspan="3">Greška pri učitavanju.</td></tr>';
     }
 }
+
 
 
 
