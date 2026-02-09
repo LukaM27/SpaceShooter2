@@ -114,26 +114,64 @@ window.SendScoreToDatabase = function(score) {
 // --- ČUVANJE U BAZU ---
 async function handleAuth() {
     const email = document.getElementById('auth-email').value;
+    const password = document.getElementById('auth-password').value;
     const msg = document.getElementById('auth-msg');
 
-    if (!email) { alert("Unesi email!"); return; }
-    msg.innerText = "Čuvanje...";
+    // Osnovna provera polja
+    if (!email || !password) {
+        alert("Molimo unesite email i lozinku!");
+        return;
+    }
+
+    if (password.length < 6) {
+        alert("Lozinka mora imati barem 6 karaktera!");
+        return;
+    }
+
+    msg.innerText = "Slanje podataka...";
+    msg.style.color = "var(--yellow)";
 
     try {
-        const { error } = await _supabase.from('leaderboard').upsert({ 
+        // 1. Supabase Auth - Registracija ili Prijava
+        // Napomena: Supabase će automatski kreirati usera ako ne postoji 
+        // ili pokušati prijavu ako postoji (zavisno od podešavanja projekta)
+        const { data: authData, error: authError } = await _supabase.auth.signUp({
+            email: email,
+            password: password,
+        });
+
+        if (authError) throw authError;
+
+        // 2. Čuvanje rezultata u Leaderboard tabeli
+        const { error: lbError } = await _supabase.from('leaderboard').upsert({ 
             email: email, 
             points: currentScore, 
             last_scan_date: new Date().toISOString() 
         }, { onConflict: 'email' });
 
-        if (error) throw error;
+        if (lbError) throw lbError;
 
-        await _supabase.from('scanned_receipts').insert([{ receipt_id: scannedReceiptId, scanned_by: email }]);
+        // 3. Markiranje računa kao iskorišćenog
+        const { error: receiptError } = await _supabase.from('scanned_receipts').insert([
+            { receipt_id: scannedReceiptId, scanned_by: email }
+        ]);
 
-        msg.innerText = "Uspešno!";
-        setTimeout(() => location.reload(), 2000);
+        if (receiptError) throw receiptError;
+
+        // Uspeh
+        msg.innerText = "Rezultat sačuvan! Učitavam rang listu...";
+        msg.style.color = "var(--green)";
+        
+        // Čekamo malo da korisnik vidi poruku i idemo na leaderboard
+        setTimeout(() => {
+            navigate('page-leaderboard');
+            // Ovde možeš dodati i funkciju za osvežavanje tabele ako je imaš
+        }, 2000);
+
     } catch (err) {
+        console.error("Greška:", err);
         msg.innerText = "Greška: " + err.message;
+        msg.style.color = "var(--red)";
     }
 }
 
@@ -148,4 +186,5 @@ function resizeUnityCanvas() {
 
 window.addEventListener("resize", resizeUnityCanvas);
 resizeUnityCanvas();
+
 
