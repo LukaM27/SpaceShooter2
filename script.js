@@ -57,13 +57,30 @@ async function onScanSuccess(decodedText) {
 
     scannedReceiptId = new URLSearchParams(decodedText.split('?')[1]).get('vl') || decodedText.slice(-30);
     
-    // Provera duplikata
-    const { data: existing } = await _supabase.from('scanned_receipts').select('receipt_id').eq('receipt_id', scannedReceiptId).maybeSingle();
+    // 1. Provera da li je već iskorišćen
+    const { data: existing } = await _supabase
+        .from('scanned_receipts')
+        .select('receipt_id')
+        .eq('receipt_id', scannedReceiptId)
+        .maybeSingle();
     
     if (existing) {
-        alert("Račun je već iskorišćen!");
+        alert("Ovaj račun je već iskorišćen!");
         return;
     }
+
+    // --- NOVO: ODMAH OZNAČI KAO ISKORIŠĆENO ---
+    // Upisujemo samo ID računa, bez emaila (jer se korisnik još nije ulogovao)
+    const { error: insertError } = await _supabase
+        .from('scanned_receipts')
+        .insert([{ receipt_id: scannedReceiptId, scanned_by: "IN_PROGRESS" }]);
+
+    if (insertError) {
+        console.error("Greška pri zaključavanju računa:", insertError);
+        alert("Sistemska greška pri validaciji računa.");
+        return;
+    }
+    // ------------------------------------------
 
     if (html5QrCode) await html5QrCode.stop();
     navigate('page-game');
@@ -117,14 +134,8 @@ async function handleAuth() {
     const password = document.getElementById('auth-password').value;
     const msg = document.getElementById('auth-msg');
 
-    // Osnovna provera polja
     if (!email || !password) {
         alert("Molimo unesite email i lozinku!");
-        return;
-    }
-
-    if (password.length < 6) {
-        alert("Lozinka mora imati barem 6 karaktera!");
         return;
     }
 
@@ -132,41 +143,34 @@ async function handleAuth() {
     msg.style.color = "var(--yellow)";
 
     try {
-        // 1. Supabase Auth - Registracija ili Prijava
-        // Napomena: Supabase će automatski kreirati usera ako ne postoji 
-        // ili pokušati prijavu ako postoji (zavisno od podešavanja projekta)
+        // 1. Auth (SignUp)
         const { data: authData, error: authError } = await _supabase.auth.signUp({
             email: email,
             password: password,
         });
-
         if (authError) throw authError;
 
-        // 2. Čuvanje rezultata u Leaderboard tabeli
+        // 2. Čuvanje u Leaderboard
         const { error: lbError } = await _supabase.from('leaderboard').upsert({ 
             email: email, 
             points: currentScore, 
             last_scan_date: new Date().toISOString() 
         }, { onConflict: 'email' });
-
         if (lbError) throw lbError;
 
-        // 3. Markiranje računa kao iskorišćenog
-        const { error: receiptError } = await _supabase.from('scanned_receipts').insert([
-            { receipt_id: scannedReceiptId, scanned_by: email }
-        ]);
+        // --- NOVO: DODAJ EMAIL U VEĆ POSTOJEĆI ZAPIS RAČUNA ---
+        await _supabase
+            .from('scanned_receipts')
+            .update({ scanned_by: email })
+            .eq('receipt_id', scannedReceiptId);
+        // ---------------------------------------------------
 
-        if (receiptError) throw receiptError;
-
-        // Uspeh
         msg.innerText = "Rezultat sačuvan! Učitavam rang listu...";
         msg.style.color = "var(--green)";
         
-        // Čekamo malo da korisnik vidi poruku i idemo na leaderboard
-        // Uspeh - zameni stari setTimeout ovim:
         setTimeout(async () => {
-            await showLeaderboard(); // Prvo učitaj podatke iz baze
-            navigate('page-leaderboard'); // Onda prikaži stranu
+            await showLeaderboard();
+            navigate('page-leaderboard');
         }, 2000);
 
     } catch (err) {
@@ -222,5 +226,6 @@ async function showLeaderboard() {
         lbBody.innerHTML = '<tr><td colspan="3">Greška pri učitavanju.</td></tr>';
     }
 }
+
 
 
