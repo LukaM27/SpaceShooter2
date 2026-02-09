@@ -141,7 +141,7 @@ window.SendScoreToDatabase = function(score) {
 };
 
 async function handleAuth() {
-    const email = document.getElementById('auth-email').value.trim();
+    const email = document.getElementById('auth-email').value.trim().toLowerCase();
     const password = document.getElementById('auth-password').value;
     const msg = document.getElementById('auth-msg');
 
@@ -150,70 +150,73 @@ async function handleAuth() {
         return;
     }
 
-    msg.innerText = "Provera naloga...";
+    msg.innerText = "Sakupljam podatke...";
     msg.style.color = "var(--yellow)";
 
     try {
-        // 1. POKUŠAJ PRIJAVE
-        const { data: signInData, error: signInError } = await _supabase.auth.signInWithPassword({
-            email: email,
-            password: password,
-        });
+        // 1. KORAK: Proveri u tabeli leaderboard da li ovaj email već postoji
+        // Ovo radimo pre Auth-a jer je tabela javna za čitanje
+        const { data: userInDb } = await _supabase
+            .from('leaderboard')
+            .select('email')
+            .eq('email', email)
+            .maybeSingle();
 
-        // 2. ANALIZA GREŠKE PRI PRIJAVI
-        if (signInError) {
-            // Ako je greška "Invalid login credentials", to može biti ili pogrešna lozinka 
-            // ILI korisnik uopšte ne postoji. Moramo da proverimo šta je od ta dva.
+        if (userInDb) {
+            // KORISNIK POSTOJI -> Mora da prođe strogu proveru lozinke
+            console.log("Korisnik pronađen u bazi, zahtevam lozinku...");
             
-            if (signInError.message.includes("Invalid login credentials")) {
-                console.log("Provera da li korisnik uopšte postoji...");
-                
-                // Pokušavamo registraciju - ako nalog već postoji, SignUp će izbaciti grešku
-                const { data: signUpData, error: signUpError } = await _supabase.auth.signUp({
-                    email: email,
-                    password: password,
-                });
+            const { data: signInData, error: signInError } = await _supabase.auth.signInWithPassword({
+                email: email,
+                password: password,
+            });
 
-                if (signUpError) {
-                    // Ako SignUp kaže "User already registered", znači da je lozinka bila pogrešna
-                    if (signUpError.message.includes("User already registered")) {
-                        throw new Error("Pogrešna lozinka za ovaj nalog!");
-                    } else {
-                        throw signUpError;
-                    }
-                }
-                console.log("Uspešna registracija novog korisnika!");
-            } else {
-                throw signInError;
+            if (signInError) {
+                // Ako je lozinka pogrešna, Supabase će izbaciti grešku i ovde se sve prekida
+                throw new Error("Pogrešna lozinka za ovaj nalog! Bodovi nisu sačuvani.");
             }
+            console.log("Prijava uspešna!");
+        } else {
+            // KORISNIK NE POSTOJI -> Registruj ga kao novog
+            console.log("Novi korisnik, registrujem nalog...");
+            
+            const { data: signUpData, error: signUpError } = await _supabase.auth.signUp({
+                email: email,
+                password: password,
+            });
+
+            if (signUpError) throw signUpError;
+            console.log("Registracija uspešna!");
         }
 
-        // --- AKO SMO OVDE, ZNAČI DA JE PRIJAVA ILI REGISTRACIJA USPELA ---
-        
-        // 3. LOGIKA ZA SABIRANJE POENA
-        const { data: existingEntry } = await _supabase
+        // --- AKO SMO OVDE, IDENTITET JE POTVRĐEN ---
+
+        // 2. KORAK: Sabiranje poena (sada je sigurno)
+        const { data: scoreData } = await _supabase
             .from('leaderboard')
             .select('points')
             .eq('email', email)
             .maybeSingle();
 
-        let totalPoints = currentScore + (existingEntry ? existingEntry.points : 0);
+        let totalPoints = currentScore + (scoreData ? scoreData.points : 0);
 
-        // 4. UPIS U BAZU
-        const { error: lbError } = await _supabase.from('leaderboard').upsert({ 
-            email: email, 
-            points: totalPoints, 
-            last_scan_date: new Date().toISOString() 
-        }, { onConflict: 'email' });
+        // 3. KORAK: Upis novog skora
+        const { error: lbError } = await _supabase
+            .from('leaderboard')
+            .upsert({ 
+                email: email, 
+                points: totalPoints, 
+                last_scan_date: new Date().toISOString() 
+            }, { onConflict: 'email' });
 
         if (lbError) throw lbError;
 
-        // 5. VEŽI RAČUN
+        // 4. KORAK: Markiraj račun
         await _supabase.from('scanned_receipts')
             .update({ scanned_by: email })
             .eq('receipt_id', scannedReceiptId);
 
-        msg.innerText = "Poeni uspešno dodati!";
+        msg.innerText = "Uspeh! Tvoji bodovi su sigurni.";
         msg.style.color = "var(--green)";
         
         setTimeout(async () => {
@@ -223,7 +226,7 @@ async function handleAuth() {
 
     } catch (err) {
         console.error("Auth Error:", err);
-        msg.innerText = "Greška: " + err.message;
+        msg.innerText = err.message; 
         msg.style.color = "var(--red)";
     }
 }
@@ -273,6 +276,7 @@ async function showLeaderboard() {
         lbBody.innerHTML = '<tr><td colspan="3">Greška pri učitavanju.</td></tr>';
     }
 }
+
 
 
 
