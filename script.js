@@ -150,48 +150,48 @@ async function handleAuth() {
         return;
     }
 
-    msg.innerText = "Sakupljam podatke...";
+    msg.innerText = "Provera identiteta...";
     msg.style.color = "var(--yellow)";
 
     try {
-        // 1. KORAK: Proveri u tabeli leaderboard da li ovaj email već postoji
-        // Ovo radimo pre Auth-a jer je tabela javna za čitanje
-        const { data: userInDb } = await _supabase
-            .from('leaderboard')
-            .select('email')
-            .eq('email', email)
-            .maybeSingle();
+        // 1. KORAK: Prvo uvek pokušaj PRIJAVU (Login)
+        let { data: authData, error: signInError } = await _supabase.auth.signInWithPassword({
+            email: email,
+            password: password,
+        });
 
-        if (userInDb) {
-            // KORISNIK POSTOJI -> Mora da prođe strogu proveru lozinke
-            console.log("Korisnik pronađen u bazi, zahtevam lozinku...");
+        // 2. KORAK: Analiza greške pri prijavi
+        if (signInError) {
+            // Ako je greška "Invalid login credentials", to može značiti dve stvari:
+            // A) Pogrešna lozinka
+            // B) Korisnik uopšte ne postoji u Auth sistemu
             
-            const { data: signInData, error: signInError } = await _supabase.auth.signInWithPassword({
-                email: email,
-                password: password,
-            });
+            console.log("Prijava nije uspela, proveravam da li korisnik postoji...");
 
-            if (signInError) {
-                // Ako je lozinka pogrešna, Supabase će izbaciti grešku i ovde se sve prekida
-                throw new Error("Pogrešna lozinka za ovaj nalog! Bodovi nisu sačuvani.");
-            }
-            console.log("Prijava uspešna!");
-        } else {
-            // KORISNIK NE POSTOJI -> Registruj ga kao novog
-            console.log("Novi korisnik, registrujem nalog...");
-            
+            // Pokušavamo registraciju (SignUp)
             const { data: signUpData, error: signUpError } = await _supabase.auth.signUp({
                 email: email,
                 password: password,
             });
 
-            if (signUpError) throw signUpError;
-            console.log("Registracija uspešna!");
+            if (signUpError) {
+                // Ako SignUp kaže da korisnik već postoji, a Login nije prošao, znači da je LOZINKA LOŠA
+                if (signUpError.message.includes("already registered") || signUpError.status === 422) {
+                    throw new Error("Pogrešna lozinka za ovaj email!");
+                } else {
+                    throw signUpError;
+                }
+            }
+            // Ako je SignUp prošao, koristimo te podatke
+            authData = signUpData;
+            console.log("Novi nalog kreiran!");
+        } else {
+            console.log("Prijava uspešna!");
         }
 
-        // --- AKO SMO OVDE, IDENTITET JE POTVRĐEN ---
+        // --- AKO SMO DO OVDE STIGLI, KORISNIK JE SIGURNO ULOGOVAN ---
 
-        // 2. KORAK: Sabiranje poena (sada je sigurno)
+        // 3. KORAK: Sabiranje poena (iz leaderboard tabele)
         const { data: scoreData } = await _supabase
             .from('leaderboard')
             .select('points')
@@ -200,7 +200,7 @@ async function handleAuth() {
 
         let totalPoints = currentScore + (scoreData ? scoreData.points : 0);
 
-        // 3. KORAK: Upis novog skora
+        // 4. KORAK: Upis u leaderboard
         const { error: lbError } = await _supabase
             .from('leaderboard')
             .upsert({ 
@@ -211,12 +211,12 @@ async function handleAuth() {
 
         if (lbError) throw lbError;
 
-        // 4. KORAK: Markiraj račun
+        // 5. KORAK: Veži račun
         await _supabase.from('scanned_receipts')
             .update({ scanned_by: email })
             .eq('receipt_id', scannedReceiptId);
 
-        msg.innerText = "Uspeh! Tvoji bodovi su sigurni.";
+        msg.innerText = "Uspešno sačuvano!";
         msg.style.color = "var(--green)";
         
         setTimeout(async () => {
@@ -276,6 +276,7 @@ async function showLeaderboard() {
         lbBody.innerHTML = '<tr><td colspan="3">Greška pri učitavanju.</td></tr>';
     }
 }
+
 
 
 
