@@ -163,9 +163,10 @@ async function handleAuth() {
         msg.style.color = "var(--green)";
         
         // Čekamo malo da korisnik vidi poruku i idemo na leaderboard
-        setTimeout(() => {
-            navigate('page-leaderboard');
-            // Ovde možeš dodati i funkciju za osvežavanje tabele ako je imaš
+        // Uspeh - zameni stari setTimeout ovim:
+        setTimeout(async () => {
+            await showLeaderboard(); // Prvo učitaj podatke iz baze
+            navigate('page-leaderboard'); // Onda prikaži stranu
         }, 2000);
 
     } catch (err) {
@@ -186,5 +187,40 @@ function resizeUnityCanvas() {
 
 window.addEventListener("resize", resizeUnityCanvas);
 resizeUnityCanvas();
+// --- PRIKAZ RANG LISTE ---
+async function showLeaderboard() {
+    console.log("Osvežavam rang listu...");
+    const lbBody = document.getElementById('lb-body');
+    if (!lbBody) return;
+
+    lbBody.innerHTML = '<tr><td colspan="3">Učitavanje...</td></tr>';
+
+    try {
+        const { data, error } = await _supabase
+            .from('leaderboard')
+            .select('email, points')
+            .order('points', { ascending: false })
+            .limit(10);
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+            lbBody.innerHTML = '<tr><td colspan="3">Nema rezultata.</td></tr>';
+            return;
+        }
+
+        lbBody.innerHTML = data.map((user, index) => `
+            <tr>
+                <td>${index + 1}.</td>
+                <td>${user.email.split('@')[0]}</td>
+                <td style="color: var(--yellow); font-weight: bold;">${user.points}</td>
+            </tr>
+        `).join('');
+
+    } catch (err) {
+        console.error("Greška pri učitavanju tabele:", err);
+        lbBody.innerHTML = '<tr><td colspan="3">Greška pri učitavanju.</td></tr>';
+    }
+}
 
 
