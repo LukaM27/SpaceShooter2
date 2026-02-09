@@ -53,7 +53,7 @@
         <div id="game-over-box" class="hidden">
             <h2 style="color: var(--yellow); margin-top: 0;">KRAJ IGRE!</h2>
             <p>Osvojili ste: <strong id="final-score-display" style="font-size: 1.5rem;">0</strong> poena</p>
-            <button class="btn" onclick="navigate('page-auth')">SNIMI REZULTAT</button>
+            <button class="btn" onclick="navigate('page-auth')">SAČUVAJ REZULTAT</button>
         </div>
     </section>
 
@@ -61,7 +61,8 @@
         <div class="auth-container card">
             <h2 class="logo">FINALNI KORAK</h2>
             <p style="font-size: 0.8rem; color: #888;">Unesite email da sačuvate bodove na rang listi</p>
-            <input type="email" id="auth-email" placeholder="Tvoj email adresa">
+            <input type="email" id="auth-email" placeholder="example@gmail.com">
+            <input type="password" id="auth-password" placeholder="********">
             <button class="btn" onclick="handleAuth()">POTVRDI</button>
             <p id="auth-msg"></p>
         </div>
@@ -90,5 +91,6 @@
 <script src="script.js"></script>
 </body>
 </html>
+
 
 
