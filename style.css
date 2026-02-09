@@ -113,6 +113,38 @@ header {
     align-items: center;
 }
 
+header::before {
+    content: '';
+    width: 35px; /* Mora biti ista širina kao i dugme */
+}
+
+@media (max-width: 480px) {
+    header::before {
+        width: 28px; /* Prati smanjenje dugmeta na mobilnom */
+    }
+}
+
+
+/* Media query za mobilne telefone */
+@media (max-width: 480px) {
+    .info-circle {
+        width: 28px;       /* Manja širina */
+        height: 28px;      /* Manja visina */
+        min-width: 28px;   /* Da se ne skupi */
+        font-size: 12px;   /* Manji upitnik */
+        border-width: 1.5px; 
+    }
+    
+    .logo {
+        font-size: 0.85rem; /* Malo smanjujemo i tekst logoa da stane sve */
+    }
+
+    .shiny-box {
+        padding: 6px 12px; /* Manji padding oko logoa */
+    }
+}
+
+
 .logo {
     font-family: 'Orbitron', sans-serif;
     color: var(--yellow);
@@ -363,5 +395,6 @@ tr:first-child td { color: var(--yellow); font-weight: 700; font-size: 18px; }
     width: 80%;
     z-index: 10;
 }
+
 
 
