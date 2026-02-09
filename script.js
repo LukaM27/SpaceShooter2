@@ -140,7 +140,6 @@ window.SendScoreToDatabase = function(score) {
     document.getElementById('final-score-display').innerText = score;
 };
 
-// --- ČUVANJE U BAZU ---
 async function handleAuth() {
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
@@ -151,39 +150,58 @@ async function handleAuth() {
         return;
     }
 
-    msg.innerText = "Slanje podataka...";
+    msg.innerText = "Sakupljam tvoje poene...";
     msg.style.color = "var(--yellow)";
 
     try {
-        // 1. Auth (SignUp)
+        // 1. Prijava/Registracija (ostaje isto)
         const { data: authData, error: authError } = await _supabase.auth.signUp({
             email: email,
             password: password,
         });
         if (authError) throw authError;
 
-        // 2. Čuvanje u Leaderboard
-        const { error: lbError } = await _supabase.from('leaderboard').upsert({ 
-            email: email, 
-            points: currentScore, 
-            last_scan_date: new Date().toISOString() 
-        }, { onConflict: 'email' });
+        // --- NOVO: LOGIKA ZA SABIRANJE ---
+        
+        // 2. Proveri da li korisnik već postoji u leaderboardu i uzmi trenutne poene
+        const { data: existingEntry } = await _supabase
+            .from('leaderboard')
+            .select('points')
+            .eq('email', email)
+            .maybeSingle();
+
+        let totalPoints = currentScore; // Počni sa trenutnim rezultatom
+
+        if (existingEntry) {
+            // Ako već ima poene, dodaj trenutne na stare
+            totalPoints = existingEntry.points + currentScore;
+            console.log(`Stari poeni: ${existingEntry.points}, Novi: ${currentScore}, Ukupno: ${totalPoints}`);
+        }
+
+        // 3. Sačuvaj novi, sabrani rezultat
+        const { error: lbError } = await _supabase
+            .from('leaderboard')
+            .upsert({ 
+                email: email, 
+                points: totalPoints, 
+                last_scan_date: new Date().toISOString() 
+            }, { onConflict: 'email' });
+
         if (lbError) throw lbError;
 
-        // --- NOVO: DODAJ EMAIL U VEĆ POSTOJEĆI ZAPIS RAČUNA ---
+        // 4. Ažuriraj email kod računa (ono što smo radili ranije)
         await _supabase
             .from('scanned_receipts')
             .update({ scanned_by: email })
             .eq('receipt_id', scannedReceiptId);
-        // ---------------------------------------------------
 
-        msg.innerText = "Rezultat sačuvan! Učitavam rang listu...";
+        msg.innerText = `Uspešno! Tvoj novi ukupni skor je: ${totalPoints}`;
         msg.style.color = "var(--green)";
         
         setTimeout(async () => {
             await showLeaderboard();
             navigate('page-leaderboard');
-        }, 2000);
+        }, 2500);
 
     } catch (err) {
         console.error("Greška:", err);
@@ -191,7 +209,6 @@ async function handleAuth() {
         msg.style.color = "var(--red)";
     }
 }
-
 const container = document.getElementById("unity-container");
 const canvas = document.getElementById("unity-canvas");
 
@@ -238,6 +255,7 @@ async function showLeaderboard() {
         lbBody.innerHTML = '<tr><td colspan="3">Greška pri učitavanju.</td></tr>';
     }
 }
+
 
 
 
