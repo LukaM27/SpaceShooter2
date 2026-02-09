@@ -154,31 +154,43 @@ async function handleAuth() {
     msg.style.color = "var(--yellow)";
 
     try {
-        // POKUŠAJ PRIJAVE
-        let { data, error: signInError } = await _supabase.auth.signInWithPassword({
+        // 1. POKUŠAJ PRIJAVE
+        const { data: signInData, error: signInError } = await _supabase.auth.signInWithPassword({
             email: email,
             password: password,
         });
 
-        // AKO PRIJAVA NE USPE (jer korisnik ne postoji)
+        // 2. ANALIZA GREŠKE PRI PRIJAVI
         if (signInError) {
-            console.log("Korisnik ne postoji ili je lozinka pogrešna. Pokušavam registraciju...");
+            // Ako je greška "Invalid login credentials", to može biti ili pogrešna lozinka 
+            // ILI korisnik uopšte ne postoji. Moramo da proverimo šta je od ta dva.
             
-            const { data: signUpData, error: signUpError } = await _supabase.auth.signUp({
-                email: email,
-                password: password,
-            });
+            if (signInError.message.includes("Invalid login credentials")) {
+                console.log("Provera da li korisnik uopšte postoji...");
+                
+                // Pokušavamo registraciju - ako nalog već postoji, SignUp će izbaciti grešku
+                const { data: signUpData, error: signUpError } = await _supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                });
 
-            if (signUpError) {
-                // Ako i registracija pukne, ovde ćemo saznati zašto
-                throw new Error("Ne mogu da registrujem nalog: " + signUpError.message);
+                if (signUpError) {
+                    // Ako SignUp kaže "User already registered", znači da je lozinka bila pogrešna
+                    if (signUpError.message.includes("User already registered")) {
+                        throw new Error("Pogrešna lozinka za ovaj nalog!");
+                    } else {
+                        throw signUpError;
+                    }
+                }
+                console.log("Uspešna registracija novog korisnika!");
+            } else {
+                throw signInError;
             }
-            
-            data = signUpData;
-            console.log("Novi korisnik uspešno registrovan!");
         }
 
-        // --- NASTAVAK ZA BODOVE (Sabiranje) ---
+        // --- AKO SMO OVDE, ZNAČI DA JE PRIJAVA ILI REGISTRACIJA USPELA ---
+        
+        // 3. LOGIKA ZA SABIRANJE POENA
         const { data: existingEntry } = await _supabase
             .from('leaderboard')
             .select('points')
@@ -187,17 +199,21 @@ async function handleAuth() {
 
         let totalPoints = currentScore + (existingEntry ? existingEntry.points : 0);
 
-        await _supabase.from('leaderboard').upsert({ 
+        // 4. UPIS U BAZU
+        const { error: lbError } = await _supabase.from('leaderboard').upsert({ 
             email: email, 
             points: totalPoints, 
             last_scan_date: new Date().toISOString() 
         }, { onConflict: 'email' });
 
+        if (lbError) throw lbError;
+
+        // 5. VEŽI RAČUN
         await _supabase.from('scanned_receipts')
             .update({ scanned_by: email })
             .eq('receipt_id', scannedReceiptId);
 
-        msg.innerText = "Sve je spremno! Bodovi sačuvani.";
+        msg.innerText = "Poeni uspešno dodati!";
         msg.style.color = "var(--green)";
         
         setTimeout(async () => {
@@ -206,8 +222,8 @@ async function handleAuth() {
         }, 1500);
 
     } catch (err) {
-        console.error("KRITIČNA GREŠKA:", err);
-        msg.innerText = err.message; // Ovde će ti sada ispisati TAČAN RAZLOG zašto neće
+        console.error("Auth Error:", err);
+        msg.innerText = "Greška: " + err.message;
         msg.style.color = "var(--red)";
     }
 }
@@ -257,6 +273,7 @@ async function showLeaderboard() {
         lbBody.innerHTML = '<tr><td colspan="3">Greška pri učitavanju.</td></tr>';
     }
 }
+
 
 
 
