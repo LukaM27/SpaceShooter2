@@ -8,6 +8,7 @@ const _supabase = supabase.createClient(supabaseUrl, supabaseKey);
 let html5QrCode = null;
 let currentScore = 0;
 let scannedReceiptId = "";
+let isProcessingScan = false; // Kočnica da ne okine skener dva puta
 
 // --- OSNOVNA NAVIGACIJA ---
 function navigate(id) {
@@ -48,6 +49,9 @@ async function startScanner() {
 }
 
 async function onScanSuccess(decodedText) {
+    // 1. Ako već obrađujemo jedan sken, ignoriši ostale
+    if (isProcessingScan) return; 
+    
     console.log("Skenirano:", decodedText);
     
     if (!decodedText.includes("102778428")) {
@@ -55,36 +59,44 @@ async function onScanSuccess(decodedText) {
         return;
     }
 
+    // Aktiviramo kočnicu
+    isProcessingScan = true; 
     scannedReceiptId = new URLSearchParams(decodedText.split('?')[1]).get('vl') || decodedText.slice(-30);
     
-    // 1. Provera da li je već iskorišćen
-    const { data: existing } = await _supabase
-        .from('scanned_receipts')
-        .select('receipt_id')
-        .eq('receipt_id', scannedReceiptId)
-        .maybeSingle();
-    
-    if (existing) {
-        alert("Ovaj račun je već iskorišćen!");
-        return;
+    try {
+        // 2. Provera duplikata
+        const { data: existing } = await _supabase
+            .from('scanned_receipts')
+            .select('receipt_id')
+            .eq('receipt_id', scannedReceiptId)
+            .maybeSingle();
+        
+        if (existing) {
+            alert("Ovaj račun je već iskorišćen!");
+            isProcessingScan = false; // Resetujemo kočnicu da bi mogao skenirati drugi račun
+            return;
+        }
+
+        // 3. ODMAH zaključaj račun
+        const { error: insertError } = await _supabase
+            .from('scanned_receipts')
+            .insert([{ receipt_id: scannedReceiptId, scanned_by: "IN_PROGRESS" }]);
+
+        if (insertError) throw insertError;
+
+        // 4. Ugasi skener i prebaci na igru
+        if (html5QrCode) {
+            await html5QrCode.stop().catch(() => {});
+        }
+        
+        navigate('page-game');
+        loadUnityGame();
+
+    } catch (err) {
+        console.error("Greška:", err);
+        alert("Problem sa bazom podataka. Pokušajte ponovo.");
+        isProcessingScan = false; // Resetujemo kočnicu u slučaju greške
     }
-
-    // --- NOVO: ODMAH OZNAČI KAO ISKORIŠĆENO ---
-    // Upisujemo samo ID računa, bez emaila (jer se korisnik još nije ulogovao)
-    const { error: insertError } = await _supabase
-        .from('scanned_receipts')
-        .insert([{ receipt_id: scannedReceiptId, scanned_by: "IN_PROGRESS" }]);
-
-    if (insertError) {
-        console.error("Greška pri zaključavanju računa:", insertError);
-        alert("Sistemska greška pri validaciji računa.");
-        return;
-    }
-    // ------------------------------------------
-
-    if (html5QrCode) await html5QrCode.stop();
-    navigate('page-game');
-    loadUnityGame();
 }
 
 // --- UNITY ---
@@ -226,6 +238,7 @@ async function showLeaderboard() {
         lbBody.innerHTML = '<tr><td colspan="3">Greška pri učitavanju.</td></tr>';
     }
 }
+
 
 
 
