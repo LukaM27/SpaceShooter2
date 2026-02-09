@@ -327,3 +327,34 @@ tr:first-child td { color: var(--yellow); font-weight: 700; font-size: 18px; }
 @keyframes borderGlow { from{box-shadow:0 0 10px rgba(255,215,0,0.2);} to{box-shadow:0 0 20px rgba(255,215,0,0.5); border-color:#fff;} }
 
 .hidden { display: none !important; }
+
+/* UNITY KONTEJNER - Popravljen za vertikalni prikaz */
+.unity-responsive-wrapper {
+    width: 100%;
+    max-width: 360px; /* Širina mobilnog ekrana */
+    margin: 0 auto;
+    position: relative;
+    aspect-ratio: 9 / 16; /* Forsira vertikalni format */
+    background: #000;
+    border: 3px solid var(--yellow);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+}
+
+#unity-canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
+/* Loading bar unutar vertikalnog ekrana */
+#unity-loading-bar {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    z-index: 10;
+}
+
