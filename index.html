@@ -37,20 +37,24 @@
     </section>
 
     <section id="page-game" class="page">
-       
-        <div id="unity-container" style="position: relative; width: 320px; height: 450px; background: #000; border: 3px solid var(--yellow); border-radius: 16px;">
-            <canvas id="unity-canvas" style="width: 100%; height: 100%;"></canvas>
-            <div id="unity-loading-bar" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 80%;">
-                <div style="color: var(--yellow); font-family: 'Orbitron'; font-size: 10px; margin-bottom: 5px;">UCITAVANJE...</div>
-                <div style="height: 10px; background: #222; border-radius: 5px; overflow: hidden;">
-                    <div id="unity-progress-bar-full" style="width: 0%; height: 100%; background: var(--yellow);"></div>
+        <div class="game-header">
+            <span>BODOVI: <span id="js-score">0</span></span>
+        </div>
+
+        <div id="unity-container" class="unity-responsive-wrapper">
+            <canvas id="unity-canvas"></canvas>
+            
+            <div id="unity-loading-bar">
+                <div class="loading-label">UČITAVANJE...</div>
+                <div class="progress-bar-bg">
+                    <div id="unity-progress-bar-full"></div>
                 </div>
             </div>
         </div>
 
         <div id="game-over-box" class="hidden">
-            <h2 style="color: var(--yellow);">KRAJ IGRE!</h2>
-            <p>Osvojili ste: <strong id="final-score-display">0</strong> poena</p>
+            <h2 style="color: var(--yellow); margin-top: 0;">KRAJ IGRE!</h2>
+            <p>Osvojili ste: <strong id="final-score-display" style="font-size: 1.5rem;">0</strong> poena</p>
             <button class="btn" onclick="navigate('page-auth')">SNIMI REZULTAT</button>
         </div>
     </section>
@@ -58,8 +62,8 @@
     <section id="page-auth" class="page">
         <div class="auth-container card">
             <h2 class="logo">FINALNI KORAK</h2>
-            <input type="email" id="auth-email" placeholder="Email adresa">
-            <input type="password" id="auth-password" placeholder="Lozinka">
+            <p style="font-size: 0.8rem; color: #888;">Unesite email da sačuvate bodove na rang listi</p>
+            <input type="email" id="auth-email" placeholder="Tvoj email adresa">
             <button class="btn" onclick="handleAuth()">POTVRDI</button>
             <p id="auth-msg"></p>
         </div>
@@ -68,7 +72,17 @@
     <section id="page-leaderboard" class="page">
         <h1 class="logo">RANG LISTA</h1>
         <div class="leaderboard-wrapper">
-            <table><tbody id="lb-body"></tbody></table>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">#</th>
+                        <th>IGRAČ</th>
+                        <th>BODOVI</th>
+                    </tr>
+                </thead>
+                <tbody id="lb-body">
+                    </tbody>
+            </table>
         </div>
         <button class="btn" onclick="location.reload()">IGRAJ PONOVO</button>
     </section>
@@ -78,3 +92,4 @@
 <script src="script.js"></script>
 </body>
 </html>
+
