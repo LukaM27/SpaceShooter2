@@ -2,11 +2,11 @@
 
 /* Stil za INFO dugme u headeru */
 .info-circle {
-    position: absolute;
-    right: 20px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 35px;
+            /* position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%); */
+    min-width: 35px;
     height: 35px;
     border-radius: 50%;
     border: 2px solid var(--yellow);
@@ -16,6 +16,8 @@
     font-weight: bold;
     cursor: pointer;
     box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+
+    margin-left: 10px;
 }
 
 /* Sijanje za prvog na listi */
@@ -105,6 +107,10 @@ header {
     top: 0;
     z-index: 1000;
     box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .logo {
@@ -357,4 +363,5 @@ tr:first-child td { color: var(--yellow); font-weight: 700; font-size: 18px; }
     width: 80%;
     z-index: 10;
 }
+
 
