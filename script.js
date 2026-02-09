@@ -72,7 +72,7 @@ async function onScanSuccess(decodedText) {
 
 // --- UNITY ---
 function loadUnityGame() {
-    console.log("Pokrećem Unity...");
+    console.log("Pokrećem Unity instancu...");
     const canvas = document.querySelector("#unity-canvas");
     const loadingBar = document.getElementById("unity-loading-bar");
 
@@ -85,7 +85,9 @@ function loadUnityGame() {
         productName: "GigatronGame",
         productVersion: "1.0",
         decompressionFallback: true,
-        devicePixelRatio: window.devicePixelRatio || 2,
+        devicePixelRatio: Math.min(window.devicePixelRatio, 2),
+        // DODAJ OVU LINIJU ISPOD:
+        matchWebGLToCanvasSize: true, 
     };
 
     const loaderScript = document.createElement("script");
@@ -146,3 +148,4 @@ function resizeUnityCanvas() {
 
 window.addEventListener("resize", resizeUnityCanvas);
 resizeUnityCanvas();
+
