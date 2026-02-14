@@ -243,6 +243,17 @@ async function saveScore(email, msg) {
             await showLeaderboard();
             navigate('page-leaderboard');
         }, 1500);
+        // Pre nego što upišeš bilo šta, proveri da li je račun slobodan
+const { data: receiptCheck } = await _supabase
+    .from('scanned_receipts')
+    .select('scanned_by')
+    .eq('receipt_id', scannedReceiptId)
+    .single();
+
+if (receiptCheck && receiptCheck.scanned_by !== "IN_PROGRESS") {
+    msg.innerText = "Ovaj račun je već iskorišćen!";
+    return; // Prekini sve, nema duplih poena
+}
     } catch (e) {
         console.error(e);
         msg.innerText = "Greška pri čuvanju.";
@@ -450,40 +461,41 @@ async function executeExpressReset() {
     const newPass = document.getElementById('express-new-password').value;
     const msg = document.getElementById('express-reset-msg');
 
-    if (newPass.length < 6) {
-        alert("Lozinka mora imati barem 6 karaktera!");
+    // 1. Provera da li poeni uopšte više postoje u memoriji 
+    // (ako je drugi tab već odradio posao, ovde će biti prazno)
+    const savedPoints = localStorage.getItem('pending_points');
+    if (!savedPoints) {
+        msg.innerText = "Bodovi su već sačuvani u drugom prozoru.";
+        msg.style.color = "orange";
+        setTimeout(() => window.location.reload(), 2000);
         return;
     }
 
-    msg.innerText = "Čuvam lozinku i bodove...";
-    
     const { error: updateError } = await _supabase.auth.updateUser({ password: newPass });
 
     if (updateError) {
         msg.innerText = "Greška: " + updateError.message;
-        msg.style.color = "red";
     } else {
-        const savedPoints = parseInt(localStorage.getItem('pending_points')) || 0;
-        const savedReceipt = localStorage.getItem('pending_receipt') || "";
+        msg.innerText = "Čuvam bodove...";
+        
+        const points = parseInt(savedPoints);
+        const receipt = localStorage.getItem('pending_receipt');
 
-        if (savedPoints > 0) {
-            currentScore = savedPoints;
-            scannedReceiptId = savedReceipt;
+        const { data: { user } } = await _supabase.auth.getUser();
+        
+        if (user) {
+            // ODMAH BRIŠEMO IZ LOCALSTORAGE (pre slanja u bazu)
+            // Tako čak i da klikneš dva puta munjevitom brzinom, drugi put je prazno
+            localStorage.removeItem('pending_points');
+            localStorage.removeItem('pending_receipt');
 
-            const { data: { user } } = await _supabase.auth.getUser();
+            currentScore = points;
+            scannedReceiptId = receipt;
+
+            // Šaljemo u bazu
+            await saveScore(user.email, msg);
             
-            if (user) {
-                await saveScore(user.email, msg);
-                
-                localStorage.removeItem('pending_points');
-                localStorage.removeItem('pending_receipt');
-                
-                // Ugasi modal nakon uspeha
-                document.getElementById('expressResetModal').style.display = 'none';
-            }
-        } else {
-            // Ako nema poena, samo osveži na čistu stranu
-            window.location.href = window.location.origin + window.location.pathname;
+            document.getElementById('expressResetModal').style.display = 'none';
         }
     }
 }
@@ -493,6 +505,7 @@ async function handleLogout() {
     await _supabase.auth.signOut();
     window.location.reload();
 }
+
 
 
 
