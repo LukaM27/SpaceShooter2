@@ -381,7 +381,7 @@ _supabase.auth.onAuthStateChange(async (event, session) => {
 
 // --- EXPRESS PASSWORD RESET SISTEM ---
 
-// 1. Funkcija koja šalje mejl (Zameni staru forgotPassword ovim)
+// 1. Funkcija koja šalje mejl
 async function forgotPassword() {
     const emailField = document.getElementById('auth-email');
     const email = emailField.value.trim().toLowerCase();
@@ -392,7 +392,6 @@ async function forgotPassword() {
         return;
     }
 
-    // Šaljemo mejl sa linkom koji vraća na tvoj sajt
     const { error } = await _supabase.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin + window.location.pathname, 
     });
@@ -406,18 +405,37 @@ async function forgotPassword() {
     }
 }
 
-// 2. Automatska provera čim se stranica učita
-window.addEventListener('load', () => {
+// 2. GLAVNA PROVERA I AKTIVACIJA SESIJE (Ovo rešava "Auth session missing")
+window.addEventListener('load', async () => {
     const url = window.location.href;
     
-    // Provera da li se korisnik vratio sa mejla
     if (url.includes("type=recovery") || url.includes("access_token")) {
-        console.log("Express Reset detektovan!");
+        console.log("Express Reset detektovan! Aktivirao sesiju...");
+
+        // RUČNO IZVLAČENJE TOKENA IZ URL HASH-a (#)
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
+
+        if (accessToken && refreshToken) {
+            // KLJUČNI KORAK: Silom kažemo Supabase-u ko smo na osnovu linka
+            const { error: sessionError } = await _supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
+            });
+
+            if (sessionError) {
+                console.error("Greška pri postavljanju sesije:", sessionError);
+                return;
+            }
+            console.log("Sesija uspešno uspostavljena.");
+        }
 
         // Sakrij skener i sve ostale stranice
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         
-        // Prikaži onaj crni prozor za novu šifru
+        // Prikaži modal za novu šifru
         const modal = document.getElementById('expressResetModal');
         if (modal) {
             modal.style.display = 'block';
@@ -436,20 +454,33 @@ async function executeExpressReset() {
         return;
     }
 
+    msg.innerText = "Čuvam novu lozinku...";
+    msg.style.color = "var(--yellow)";
+
+    // Sada kada imamo sesiju (zahvaljujući setSession iznad), ovo će raditi!
     const { error } = await _supabase.auth.updateUser({ password: newPass });
 
     if (error) {
+        console.error("Greška kod updateUser:", error);
         msg.innerText = "Greška: " + error.message;
+        msg.style.color = "red";
     } else {
         msg.innerText = "Uspešno! Šifra je promenjena.";
         msg.style.color = "#00ff00";
 
         setTimeout(() => {
-            // Čisti URL i osvežava sajt da se vratiš na početak
+            // Čisti URL od tokena i osvežava sajt
             window.location.href = window.location.origin + window.location.pathname;
         }, 2000);
     }
 }
+
+// Funkcija za Logout (Dodaj je ovde ako ti je falila)
+async function handleLogout() {
+    await _supabase.auth.signOut();
+    window.location.reload();
+}
+
 
 
 
