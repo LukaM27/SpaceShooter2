@@ -369,3 +369,59 @@ async function handleLogout() {
     await _supabase.auth.signOut();
     window.location.reload();
 }
+
+// 1. Funkcija za slanje mejla za resetovanje
+async function forgotPassword() {
+    const email = document.getElementById('auth-email').value.trim();
+    const msg = document.getElementById('auth-msg');
+
+    if (!email) {
+        alert("Molimo unesite Email u polje iznad!");
+        return;
+    }
+
+    const { error } = await _supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.href, // Vraća korisnika nazad na tvoju igricu
+    });
+
+    if (error) {
+        msg.innerText = "Greška: " + error.message;
+        msg.style.color = "red";
+    } else {
+        msg.innerText = "Mejl za resetovanje je poslat!";
+        msg.style.color = "#00ff00";
+    }
+}
+
+// 2. Provera da li se korisnik vratio sa linka za resetovanje lozinke
+_supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event == "PASSWORD_RECOVERY") {
+        console.log("Korisnik želi da promeni šifru!");
+        document.getElementById('resetPasswordModal').style.display = 'block';
+    }
+});
+
+// 3. Funkcija za čuvanje nove šifre
+async function updatePassword() {
+    const newPassword = document.getElementById('new-password').value;
+    const msg = document.getElementById('reset-msg');
+
+    if (newPassword.length < 6) {
+        alert("Lozinka mora imati bar 6 karaktera!");
+        return;
+    }
+
+    const { error } = await _supabase.auth.updateUser({ password: newPassword });
+
+    if (error) {
+        msg.innerText = "Greška: " + error.message;
+        msg.style.color = "red";
+    } else {
+        msg.innerText = "Lozinka uspešno promenjena!";
+        msg.style.color = "#00ff00";
+        setTimeout(() => {
+            document.getElementById('resetPasswordModal').style.display = 'none';
+        }, 2000);
+    }
+}
+
