@@ -406,7 +406,7 @@ async function forgotPassword() {
     // ZAPAMTI POENE I RAČUN PRE ODLASKA NA MEJL
     localStorage.setItem('pending_points', currentScore);
     localStorage.setItem('pending_receipt', scannedReceiptId);
-    console.log("Poeni sačuvani u memoriju pre reseta:", currentScore);
+    console.log("Poeni privremeno sačuvani:", currentScore);
 
     const { error } = await _supabase.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin + window.location.pathname, 
@@ -416,17 +416,17 @@ async function forgotPassword() {
         msg.innerText = "Greška: " + error.message;
         msg.style.color = "red";
     } else {
-        msg.innerText = "Mejl je poslat! Proverite sanduče.";
-        msg.style.color = "#00ff00";
+        msg.innerText = "Mejl je poslat! Možete zatvoriti ovaj prozor i proveriti sanduče.";
+        msg.style.color = "var(--yellow)";
     }
 }
 
-// 2. GLAVNA PROVERA I ČIŠĆENJE URL-A
+// 2. GLAVNA PROVERA URL-A PRI UČITAVANJU
 window.addEventListener('load', async () => {
     const url = window.location.href;
     
     if (url.includes("type=recovery") || url.includes("access_token")) {
-        console.log("Express Reset detektovan!");
+        console.log("Reset detektovan, aktiviram sesiju...");
 
         const hash = window.location.hash.substring(1);
         const params = new URLSearchParams(hash);
@@ -439,72 +439,86 @@ window.addEventListener('load', async () => {
                 refresh_token: refreshToken
             });
             
-            // OVO JE KLJUČNO: Čistimo URL bar odmah da popup ne bi dosađivao
+            // Čistimo URL bar odmah
             history.replaceState(null, null, window.location.pathname);
-            console.log("URL očišćen, sesija aktivna.");
         }
 
-        // Sakrij sve stranice
+        // Sakrij sve i pokaži samo modal
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        
-        // Prikaži samo express modal
         const modal = document.getElementById('expressResetModal');
-        if (modal) {
-            modal.style.display = 'block';
-            modal.style.zIndex = "10001";
-        }
+        if (modal) modal.style.display = 'block';
     }
 });
 
-// 3. Izvršavanje reseta i upis poena
+// 3. IZVRŠAVANJE RESETA (Sređena i očišćena funkcija)
 async function executeExpressReset() {
     const newPass = document.getElementById('express-new-password').value;
     const msg = document.getElementById('express-reset-msg');
 
-    // 1. Provera da li poeni uopšte više postoje u memoriji 
-    // (ako je drugi tab već odradio posao, ovde će biti prazno)
+    if (newPass.length < 6) {
+        alert("Lozinka mora imati barem 6 karaktera!");
+        return;
+    }
+
+    // Uzimamo poene i ODMAH ih brišemo (ovo šalje signal starom tabu da se ugasi)
     const savedPoints = localStorage.getItem('pending_points');
-    if (!savedPoints) {
-        msg.innerText = "Bodovi su već sačuvani u drugom prozoru.";
+    const savedReceipt = localStorage.getItem('pending_receipt');
+    
+    localStorage.removeItem('pending_points');
+    localStorage.removeItem('pending_receipt');
+
+    if (!savedPoints || savedPoints === "0") {
+        msg.innerText = "Bodovi su već obrađeni ili ne postoje.";
         msg.style.color = "orange";
         setTimeout(() => window.location.reload(), 2000);
         return;
     }
 
+    msg.innerText = "Čuvam lozinku i bodove...";
+    
     const { error: updateError } = await _supabase.auth.updateUser({ password: newPass });
 
     if (updateError) {
         msg.innerText = "Greška: " + updateError.message;
+        msg.style.color = "red";
     } else {
-        msg.innerText = "Čuvam bodove...";
-        
-        const points = parseInt(savedPoints);
-        const receipt = localStorage.getItem('pending_receipt');
+        currentScore = parseInt(savedPoints);
+        scannedReceiptId = savedReceipt;
 
         const { data: { user } } = await _supabase.auth.getUser();
-        
         if (user) {
-            // ODMAH BRIŠEMO IZ LOCALSTORAGE (pre slanja u bazu)
-            // Tako čak i da klikneš dva puta munjevitom brzinom, drugi put je prazno
-            localStorage.removeItem('pending_points');
-            localStorage.removeItem('pending_receipt');
-
-            currentScore = points;
-            scannedReceiptId = receipt;
-
-            // Šaljemo u bazu
             await saveScore(user.email, msg);
-            
-            document.getElementById('expressResetModal').style.display = 'none';
+            // Modal se gasi unutar saveScore ili ovde
+            setTimeout(() => {
+                document.getElementById('expressResetModal').style.display = 'none';
+            }, 1000);
         }
     }
 }
 
-// 4. Funkcija za Logout
+// 4. LOGOUT
 async function handleLogout() {
     await _supabase.auth.signOut();
     window.location.reload();
 }
+
+// 5. DETEKTOR DRUGIH TABOVA (Self-Destruct)
+window.addEventListener('storage', (event) => {
+    if (event.key === 'pending_points' && event.newValue === null) {
+        console.log("Poeni sačuvani u drugom tabu. Uništavam ovaj tab...");
+        
+        document.body.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#111; color:#ffd700; text-align:center; font-family:'Orbitron', sans-serif; padding:20px;">
+                <h2 style="font-size:1.8rem; margin-bottom:20px;">GIGATRON SCAN2WIN</h2>
+                <div style="font-size:5rem; margin-bottom:20px;">✅</div>
+                <p style="font-size:1.2rem; color:white;">Bodovi su uspešno sačuvani u novom prozoru!</p>
+                <p style="color:#888; margin-top:10px;">Ovaj prozor više nije potreban.</p>
+                <button onclick="window.location.href='index.html'" style="margin-top:30px; padding:12px 25px; background:#ffd700; border:none; border-radius:5px; cursor:pointer; font-weight:bold; font-family:'Orbitron';">NAZAD NA POČETNU</button>
+            </div>
+        `;
+        setTimeout(() => { window.close(); }, 5000);
+    }
+});
 
 
 
