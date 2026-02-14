@@ -312,54 +312,60 @@ function resizeUnityCanvas() {
 window.addEventListener("resize", resizeUnityCanvas);
 resizeUnityCanvas();
 
-// Funkcija koja se poziva kad klikneš na upitnik
-async function openInfoModal() {
+// --- MODAL LOGIKA (FIXED) ---
+
+async function toggleUserInfo() {
     const modal = document.getElementById('infoModal');
     const userSection = document.getElementById('userAccountInfo');
     const guestMessage = document.getElementById('guestMessage');
     const emailSpan = document.getElementById('infoEmail');
     const pointsSpan = document.getElementById('infoPoints');
 
-    // 1. Pitamo Supabase da li postoji ulogovan korisnik
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (user) {
-        // Korisnik je ulogovan
-        guestMessage.style.display = 'none';
-        userSection.style.display = 'block';
-        emailSpan.innerText = user.email;
-
-        // 2. Izvlačimo bodove iz baze (tabela 'profiles' koju smo ranije pominjali)
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('points')
-            .eq('id', user.id)
-            .single();
-
-        if (profile) {
-            pointsSpan.innerText = profile.points;
-        }
-    } else {
-        // Korisnik je gost
-        userSection.style.display = 'none';
-        guestMessage.style.display = 'block';
-    }
-
+    // Otvori modal
     modal.style.display = 'block';
+
+    try {
+        // Koristimo tvoju varijablu _supabase
+        const { data: { session } } = await _supabase.auth.getSession();
+        const user = session?.user;
+
+        if (user) {
+            guestMessage.style.display = 'none';
+            userSection.style.display = 'block';
+            emailSpan.innerText = user.email;
+
+            // Izvlačimo bodove iz tvoje tabele 'leaderboard' (pošto nju koristiš u saveScore)
+            const { data: scoreData } = await _supabase
+                .from('leaderboard')
+                .select('points')
+                .eq('email', user.email)
+                .maybeSingle();
+
+            pointsSpan.innerText = scoreData ? scoreData.points : "0";
+        } else {
+            userSection.style.display = 'none';
+            guestMessage.style.display = 'block';
+        }
+    } catch (err) {
+        console.error("Greška kod modala:", err);
+    }
 }
 
-// Zatvaranje modala na X
+// Zatvaranje na X
 document.querySelector('.close-button').onclick = function() {
     document.getElementById('infoModal').style.display = "none";
-}
+};
 
-// Funkcija za odjavu
+// Zatvaranje na klik van prozora
+window.addEventListener('click', function(event) {
+    const modal = document.getElementById('infoModal');
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
+});
+
+// Funkcija za Logout
 async function handleLogout() {
-    await supabase.auth.signOut();
-    window.location.reload(); // Osveži stranicu nakon odjave
+    await _supabase.auth.signOut();
+    window.location.reload();
 }
-
-// Poveži upitnik sa funkcijom (zameni 'upitnikID' sa tvojim pravim ID-jem)
-document.getElementById('tvoj_id_upitnika').addEventListener('click', openInfoModal);
-
-
