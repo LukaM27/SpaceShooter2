@@ -331,6 +331,50 @@ function stopPropagation(e) {
     }
 }
 
+// Funkcija koja pali/gasi Unity tastaturu
+function toggleUnityKeyboard(disable) {
+    if (window.unityInstance) {
+        // Ova komanda govori Unity-ju: "0" - ne kradi tastere, "1" - kradi tastere
+        window.unityInstance.SendMessage("Canvas", "SetKeyboardFocus", disable ? 0 : 1); 
+        
+        // Dodatni fiks za novije verzije Unity-ja
+        if (window.unityInstance.Module) {
+            window.unityInstance.Module.canvas.style.pointerEvents = disable ? "none" : "auto";
+        }
+    }
+}
+
+// Dodajemo listenere na tvoja polja
+const emailInp = document.getElementById('auth-email');
+const passInp = document.getElementById('auth-password');
+
+[emailInp, passInp].forEach(input => {
+    // Kad uđeš u polje - ugasi Unity tastaturu
+    input.addEventListener('focus', () => {
+        if (window.unityInstance) {
+            window.unityInstance.setModuleCanvasClickThrough(true);
+            // Direktno gađamo Unity Module ako SetMessage ne radi
+            if (window.unityInstance.Module && window.unityInstance.Module.canvas) {
+                window.unityInstance.Module.canvas.blur();
+            }
+        }
+        console.log("Tastatura prebačena na INPUT");
+    });
+
+    // Kad izađeš iz polja - vrati Unity tastaturu (ako treba za igru)
+    input.addEventListener('blur', () => {
+        console.log("Tastatura vraćena na UNITY");
+    });
+});
+
+// Ovaj kod "hvata" tastere pre nego što Unity stigne da ih blokira
+window.addEventListener('keydown', function(e) {
+    if (document.activeElement.tagName === 'INPUT') {
+        e.stopPropagation(); // Ne daj eventu da ode do Unity-ja
+        return true;
+    }
+}, true); // Ovo 'true' na kraju je najbitnije!
+
 
 
 
