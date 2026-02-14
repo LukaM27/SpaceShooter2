@@ -393,25 +393,29 @@ async function forgotPassword() {
     }
 }
 
-// 2. Provera da li se korisnik vratio sa linka za resetovanje lozinke
+// Čim se skripta učita, slušaj promene u logovanju
 _supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event == "PASSWORD_RECOVERY") {
-        console.log("Korisnik želi da promeni šifru!");
+    console.log("Auth Event:", event); // Ovo će ti ispisati šta se dešava u konzoli
+
+    // Ako je event 'PASSWORD_RECOVERY', to znači da je korisnik kliknuo link u mejlu
+    if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && window.location.hash.includes("type=recovery"))) {
+        console.log("Korisnik potvrđen preko mejla. Otvaram prozor za novu šifru.");
         document.getElementById('resetPasswordModal').style.display = 'block';
     }
 });
 
-// 3. Funkcija za čuvanje nove šifre
+// Funkcija koja zapravo menja šifru u bazi
 async function updatePassword() {
-    const newPassword = document.getElementById('new-password').value;
+    const newPass = document.getElementById('new-password').value;
     const msg = document.getElementById('reset-msg');
 
-    if (newPassword.length < 6) {
+    if (newPass.length < 6) {
         alert("Lozinka mora imati bar 6 karaktera!");
         return;
     }
 
-    const { error } = await _supabase.auth.updateUser({ password: newPassword });
+    // Pošto je korisnik došao preko linka, on je "ulogovan" i ovo će raditi:
+    const { error } = await _supabase.auth.updateUser({ password: newPass });
 
     if (error) {
         msg.innerText = "Greška: " + error.message;
@@ -419,9 +423,15 @@ async function updatePassword() {
     } else {
         msg.innerText = "Lozinka uspešno promenjena!";
         msg.style.color = "#00ff00";
-        setTimeout(() => {
+        
+        // Posle 2 sekunde ga odjavi i vrati na login stranu da se uloguje sa novom šifrom
+        setTimeout(async () => {
+            await _supabase.auth.signOut();
             document.getElementById('resetPasswordModal').style.display = 'none';
+            window.location.hash = ""; // Čisti URL od tokena
+            navigate('page-auth'); 
         }, 2000);
     }
 }
+
 
