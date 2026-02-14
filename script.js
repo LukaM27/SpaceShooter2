@@ -115,19 +115,41 @@ function loadUnityGame() {
         productVersion: "1.0",
         decompressionFallback: true,
         devicePixelRatio: Math.min(window.devicePixelRatio, 2),
-        // DODAJ OVU LINIJU ISPOD:
         matchWebGLToCanvasSize: true, 
     };
 
     const loaderScript = document.createElement("script");
     loaderScript.src = "build/igra.loader.js"; 
+    
     loaderScript.onload = () => {
         createUnityInstance(canvas, config, (progress) => {
             const bar = document.getElementById("unity-progress-bar-full");
             if (bar) bar.style.width = (100 * progress) + "%";
         }).then((instance) => {
+            // 1. Čuvamo instancu globalno da bi JS mogao da joj "komanduje"
+            window.unityInstance = instance; 
             console.log("Unity spreman!");
+            
+            // 2. Dozvoljavamo klikovima da prođu kroz Unity "štit"
+            // (Ako ova funkcija ne postoji u tvojoj verziji Unity-ja, neće baciti error)
+            if (instance.setModuleCanvasClickThrough) {
+                instance.setModuleCanvasClickThrough(true);
+            }
+
+            // 3. ISKLJUČUJEMO kradju tastature odmah po učitavanju
+            // Ovo rešava problem da "neće ni da kuca" na kompu
+            if (window.unityInstance.Module && window.unityInstance.Module.canvas) {
+                window.unityInstance.Module.canvas.addEventListener('keydown', (e) => {
+                    // Ako je fokus na input polju, ne dozvoli Unity-ju da uzme taster
+                    if (e.target.nodeName === 'INPUT') {
+                        e.stopPropagation();
+                    }
+                }, true);
+            }
+
             if (loadingBar) loadingBar.style.display = "none";
+        }).catch((message) => {
+            alert("Greška pri učitavanju igre: " + message);
         });
     };
     document.body.appendChild(loaderScript);
@@ -141,9 +163,15 @@ window.SendScoreToDatabase = function(score) {
 };
 
 async function handleAuth() {
-    const email = document.getElementById('auth-email').value.trim().toLowerCase();
-    const password = document.getElementById('auth-password').value;
+    const emailField = document.getElementById('auth-email');
+    const passwordField = document.getElementById('auth-password');
+    const email = emailField.value.trim().toLowerCase();
+    const password = passwordField.value;
     const msg = document.getElementById('auth-msg');
+
+    // Sprečavamo bagove tokom slanja
+    emailField.blur(); 
+    passwordField.blur();
 
     if (!email || password.length < 6) {
         alert("Email je obavezan, a lozinka mora imati bar 6 karaktera!");
@@ -202,35 +230,6 @@ async function handleAuth() {
         msg.innerText = err.message;
         msg.style.color = "var(--red)";
     }
-}
-
-// Ova funkcija ostaje ista
-async function saveScore(email, msg) {
-    const { data: scoreData } = await _supabase
-        .from('leaderboard')
-        .select('points')
-        .eq('email', email)
-        .maybeSingle();
-
-    let totalPoints = currentScore + (scoreData ? scoreData.points : 0);
-
-    await _supabase.from('leaderboard').upsert({ 
-        email: email, 
-        points: totalPoints, 
-        last_scan_date: new Date().toISOString() 
-    }, { onConflict: 'email' });
-
-    await _supabase.from('scanned_receipts')
-        .update({ scanned_by: email })
-        .eq('receipt_id', scannedReceiptId);
-
-    msg.innerText = "Uspešno sačuvano!";
-    msg.style.color = "var(--green)";
-    
-    setTimeout(async () => {
-        await showLeaderboard();
-        navigate('page-leaderboard');
-    }, 1500);
 }
 
 // Pomoćna funkcija da ne dupliramo kod za čuvanje
@@ -308,6 +307,29 @@ async function showLeaderboard() {
     }
 }
 
+// Rešenje za problem sa kucanjem (Unity Keyboard Focus fix)
+const authInputs = document.querySelectorAll('#auth-email, #auth-password');
+
+authInputs.forEach(input => {
+    input.addEventListener('focus', () => {
+        // Ako postoji Unity instanca, isključujemo njeno presretanje tastature
+        if (typeof unityInstance !== "undefined") {
+            unityInstance.SendMessage("Canvas", "SetKeyboardFocus", 0); // Opciono ako imaš skriptu u Unity
+        }
+        // Glavni fiks: dozvoli browseru da upravlja tastaturom
+        window.addEventListener('keydown', stopPropagation, true);
+    });
+
+    input.addEventListener('blur', () => {
+        window.removeEventListener('keydown', stopPropagation, true);
+    });
+});
+
+function stopPropagation(e) {
+    if (e.target.nodeName === 'INPUT') {
+        e.stopPropagation();
+    }
+}
 
 
 
