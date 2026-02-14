@@ -433,5 +433,76 @@ async function updatePassword() {
         }, 2000);
     }
 }
+// --- EXPRESS PASSWORD RESET SISTEM ---
+
+// 1. Funkcija koja šalje mejl (Zameni staru forgotPassword ovim)
+async function forgotPassword() {
+    const emailField = document.getElementById('auth-email');
+    const email = emailField.value.trim().toLowerCase();
+    const msg = document.getElementById('auth-msg');
+
+    if (!email) {
+        alert("Molimo unesite email!");
+        return;
+    }
+
+    // Šaljemo mejl sa linkom koji vraća na tvoj sajt
+    const { error } = await _supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + window.location.pathname, 
+    });
+
+    if (error) {
+        msg.innerText = "Greška: " + error.message;
+        msg.style.color = "red";
+    } else {
+        msg.innerText = "Mejl je poslat! Kliknite na link u mejlu.";
+        msg.style.color = "#00ff00";
+    }
+}
+
+// 2. Automatska provera čim se stranica učita
+window.addEventListener('load', () => {
+    const url = window.location.href;
+    
+    // Provera da li se korisnik vratio sa mejla
+    if (url.includes("type=recovery") || url.includes("access_token")) {
+        console.log("Express Reset detektovan!");
+
+        // Sakrij skener i sve ostale stranice
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        
+        // Prikaži onaj crni prozor za novu šifru
+        const modal = document.getElementById('expressResetModal');
+        if (modal) {
+            modal.style.display = 'block';
+            modal.style.zIndex = "10001";
+        }
+    }
+});
+
+// 3. Funkcija za upisivanje nove šifre preko stare
+async function executeExpressReset() {
+    const newPass = document.getElementById('express-new-password').value;
+    const msg = document.getElementById('express-reset-msg');
+
+    if (newPass.length < 6) {
+        alert("Lozinka mora imati barem 6 karaktera!");
+        return;
+    }
+
+    const { error } = await _supabase.auth.updateUser({ password: newPass });
+
+    if (error) {
+        msg.innerText = "Greška: " + error.message;
+    } else {
+        msg.innerText = "Uspešno! Šifra je promenjena.";
+        msg.style.color = "#00ff00";
+
+        setTimeout(() => {
+            // Čisti URL i osvežava sajt da se vratiš na početak
+            window.location.href = window.location.origin + window.location.pathname;
+        }, 2000);
+    }
+}
 
 
