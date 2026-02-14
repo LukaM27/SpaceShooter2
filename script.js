@@ -392,6 +392,11 @@ async function forgotPassword() {
         return;
     }
 
+    // --- NOVO: ZAPAMTI POENE I RAČUN PRE ODLASKA NA MEJL ---
+    localStorage.setItem('pending_points', currentScore);
+    localStorage.setItem('pending_receipt', scannedReceiptId);
+    console.log("Poeni sačuvani u memoriju pre reseta:", currentScore);
+
     const { error } = await _supabase.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin + window.location.pathname, 
     });
@@ -454,24 +459,45 @@ async function executeExpressReset() {
         return;
     }
 
-    msg.innerText = "Čuvam novu lozinku...";
-    msg.style.color = "var(--yellow)";
+    msg.innerText = "Čuvam lozinku i bodove...";
+    
+    // 1. Menjamo lozinku
+    const { error: updateError } = await _supabase.auth.updateUser({ password: newPass });
 
-    // Sada kada imamo sesiju (zahvaljujući setSession iznad), ovo će raditi!
-    const { error } = await _supabase.auth.updateUser({ password: newPass });
-
-    if (error) {
-        console.error("Greška kod updateUser:", error);
-        msg.innerText = "Greška: " + error.message;
+    if (updateError) {
+        msg.innerText = "Greška: " + updateError.message;
         msg.style.color = "red";
     } else {
-        msg.innerText = "Uspešno! Šifra je promenjena.";
-        msg.style.color = "#00ff00";
+        // 2. Lozinka je uspešna, sada izvlačimo poene iz memorije brauzera
+        const savedPoints = parseInt(localStorage.getItem('pending_points')) || 0;
+        const savedReceipt = localStorage.getItem('pending_receipt') || "";
 
-        setTimeout(() => {
-            // Čisti URL od tokena i osvežava sajt
+        if (savedPoints > 0) {
+            // Vraćamo poene u trenutnu sesiju
+            currentScore = savedPoints;
+            scannedReceiptId = savedReceipt;
+
+            // Uzimamo email trenutnog korisnika
+            const { data: { user } } = await _supabase.auth.getUser();
+            
+            if (user) {
+                // Pozivamo tvoju postojeću funkciju saveScore koja već zna da upiše bodove
+                await saveScore(user.email, msg);
+                
+                // Čistimo memoriju brauzera
+                localStorage.removeItem('pending_points');
+                localStorage.removeItem('pending_receipt');
+                
+                // Zatvaramo modal
+                document.getElementById('expressResetModal').style.display = 'none';
+                
+                // Tvoja saveScore funkcija već ima u sebi navigate('page-leaderboard')
+                // tako da će te ona automatski prebaciti tamo!
+            }
+        } else {
+            // Ako nema poena, samo osveži
             window.location.href = window.location.origin + window.location.pathname;
-        }, 2000);
+        }
     }
 }
 
@@ -480,6 +506,7 @@ async function handleLogout() {
     await _supabase.auth.signOut();
     window.location.reload();
 }
+
 
 
 
