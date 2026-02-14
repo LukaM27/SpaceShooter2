@@ -312,3 +312,54 @@ function resizeUnityCanvas() {
 window.addEventListener("resize", resizeUnityCanvas);
 resizeUnityCanvas();
 
+// Funkcija koja se poziva kad klikneš na upitnik
+async function openInfoModal() {
+    const modal = document.getElementById('infoModal');
+    const userSection = document.getElementById('userAccountInfo');
+    const guestMessage = document.getElementById('guestMessage');
+    const emailSpan = document.getElementById('infoEmail');
+    const pointsSpan = document.getElementById('infoPoints');
+
+    // 1. Pitamo Supabase da li postoji ulogovan korisnik
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (user) {
+        // Korisnik je ulogovan
+        guestMessage.style.display = 'none';
+        userSection.style.display = 'block';
+        emailSpan.innerText = user.email;
+
+        // 2. Izvlačimo bodove iz baze (tabela 'profiles' koju smo ranije pominjali)
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('points')
+            .eq('id', user.id)
+            .single();
+
+        if (profile) {
+            pointsSpan.innerText = profile.points;
+        }
+    } else {
+        // Korisnik je gost
+        userSection.style.display = 'none';
+        guestMessage.style.display = 'block';
+    }
+
+    modal.style.display = 'block';
+}
+
+// Zatvaranje modala na X
+document.querySelector('.close-button').onclick = function() {
+    document.getElementById('infoModal').style.display = "none";
+}
+
+// Funkcija za odjavu
+async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.reload(); // Osveži stranicu nakon odjave
+}
+
+// Poveži upitnik sa funkcijom (zameni 'upitnikID' sa tvojim pravim ID-jem)
+document.getElementById('tvoj_id_upitnika').addEventListener('click', openInfoModal);
+
+
