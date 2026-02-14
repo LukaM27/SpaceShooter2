@@ -392,7 +392,7 @@ async function forgotPassword() {
         return;
     }
 
-    // --- NOVO: ZAPAMTI POENE I RAČUN PRE ODLASKA NA MEJL ---
+    // ZAPAMTI POENE I RAČUN PRE ODLASKA NA MEJL
     localStorage.setItem('pending_points', currentScore);
     localStorage.setItem('pending_receipt', scannedReceiptId);
     console.log("Poeni sačuvani u memoriju pre reseta:", currentScore);
@@ -405,42 +405,38 @@ async function forgotPassword() {
         msg.innerText = "Greška: " + error.message;
         msg.style.color = "red";
     } else {
-        msg.innerText = "Mejl je poslat! Kliknite na link u mejlu.";
+        msg.innerText = "Mejl je poslat! Proverite sanduče.";
         msg.style.color = "#00ff00";
     }
 }
 
-// 2. GLAVNA PROVERA I AKTIVACIJA SESIJE (Ovo rešava "Auth session missing")
+// 2. GLAVNA PROVERA I ČIŠĆENJE URL-A
 window.addEventListener('load', async () => {
     const url = window.location.href;
     
     if (url.includes("type=recovery") || url.includes("access_token")) {
-        console.log("Express Reset detektovan! Aktivirao sesiju...");
+        console.log("Express Reset detektovan!");
 
-        // RUČNO IZVLAČENJE TOKENA IZ URL HASH-a (#)
         const hash = window.location.hash.substring(1);
         const params = new URLSearchParams(hash);
         const accessToken = params.get("access_token");
         const refreshToken = params.get("refresh_token");
 
         if (accessToken && refreshToken) {
-            // KLJUČNI KORAK: Silom kažemo Supabase-u ko smo na osnovu linka
-            const { error: sessionError } = await _supabase.auth.setSession({
+            await _supabase.auth.setSession({
                 access_token: accessToken,
                 refresh_token: refreshToken
             });
-
-            if (sessionError) {
-                console.error("Greška pri postavljanju sesije:", sessionError);
-                return;
-            }
-            console.log("Sesija uspešno uspostavljena.");
+            
+            // OVO JE KLJUČNO: Čistimo URL bar odmah da popup ne bi dosađivao
+            history.replaceState(null, null, window.location.pathname);
+            console.log("URL očišćen, sesija aktivna.");
         }
 
-        // Sakrij skener i sve ostale stranice
+        // Sakrij sve stranice
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         
-        // Prikaži modal za novu šifru
+        // Prikaži samo express modal
         const modal = document.getElementById('expressResetModal');
         if (modal) {
             modal.style.display = 'block';
@@ -449,7 +445,7 @@ window.addEventListener('load', async () => {
     }
 });
 
-// 3. Funkcija za upisivanje nove šifre preko stare
+// 3. Izvršavanje reseta i upis poena
 async function executeExpressReset() {
     const newPass = document.getElementById('express-new-password').value;
     const msg = document.getElementById('express-reset-msg');
@@ -461,51 +457,43 @@ async function executeExpressReset() {
 
     msg.innerText = "Čuvam lozinku i bodove...";
     
-    // 1. Menjamo lozinku
     const { error: updateError } = await _supabase.auth.updateUser({ password: newPass });
 
     if (updateError) {
         msg.innerText = "Greška: " + updateError.message;
         msg.style.color = "red";
     } else {
-        // 2. Lozinka je uspešna, sada izvlačimo poene iz memorije brauzera
         const savedPoints = parseInt(localStorage.getItem('pending_points')) || 0;
         const savedReceipt = localStorage.getItem('pending_receipt') || "";
 
         if (savedPoints > 0) {
-            // Vraćamo poene u trenutnu sesiju
             currentScore = savedPoints;
             scannedReceiptId = savedReceipt;
 
-            // Uzimamo email trenutnog korisnika
             const { data: { user } } = await _supabase.auth.getUser();
             
             if (user) {
-                // Pozivamo tvoju postojeću funkciju saveScore koja već zna da upiše bodove
                 await saveScore(user.email, msg);
                 
-                // Čistimo memoriju brauzera
                 localStorage.removeItem('pending_points');
                 localStorage.removeItem('pending_receipt');
                 
-                // Zatvaramo modal
+                // Ugasi modal nakon uspeha
                 document.getElementById('expressResetModal').style.display = 'none';
-                
-                // Tvoja saveScore funkcija već ima u sebi navigate('page-leaderboard')
-                // tako da će te ona automatski prebaciti tamo!
             }
         } else {
-            // Ako nema poena, samo osveži
+            // Ako nema poena, samo osveži na čistu stranu
             window.location.href = window.location.origin + window.location.pathname;
         }
     }
 }
 
-// Funkcija za Logout (Dodaj je ovde ako ti je falila)
+// 4. Funkcija za Logout
 async function handleLogout() {
     await _supabase.auth.signOut();
     window.location.reload();
 }
+
 
 
 
