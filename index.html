@@ -57,16 +57,33 @@
         </div>
     </section>
 
-    <section id="page-auth" class="page">
-        <div class="auth-container card">
-            <h2 class="logo">FINALNI KORAK</h2>
-            <p style="font-size: 0.8rem; color: #888;">Unesite email da sačuvate bodove na rang listi</p>
-            <input type="email" id="auth-email" placeholder="Email">
-            <input type="password" id="auth-password" placeholder="Lozinka">
-            <button class="btn" onclick="handleAuth()">POTVRDI</button>
-            <p id="auth-msg"></p>
-        </div>
-    </section>
+  <section id="page-auth" class="page">
+    <div class="auth-container card">
+        <h2 class="logo">FINALNI KORAK</h2>
+        <p style="font-size: 0.8rem; color: #888;">Unesite email da sačuvate bodove na rang listi</p>
+        
+        <input type="email" id="auth-email" placeholder="Email">
+        <input type="password" id="auth-password" placeholder="Lozinka">
+        
+        <button class="btn" onclick="handleAuth()">POTVRDI</button>
+
+        <p style="margin-top: 15px;">
+            <a href="#" onclick="forgotPassword()" style="color: #ffd700; font-size: 0.8rem; text-decoration: none; cursor: pointer;">Zaboravili ste lozinku?</a>
+        </p>
+        
+        <p id="auth-msg"></p>
+    </div>
+</section>
+
+<div id="resetPasswordModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <h2 class="logo" style="color: #ff0000;">NOVA LOZINKA</h2>
+        <p>Unesite novu lozinku za vaš nalog:</p>
+        <input type="password" id="new-password" placeholder="Nova lozinka" style="width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #333; background: #222; color: white;">
+        <button class="btn" onclick="updatePassword()">SAČUVAJ NOVU ŠIFRU</button>
+        <p id="reset-msg"></p>
+    </div>
+</div>
 
     <section id="page-leaderboard" class="page">
         <h1 class="logo">RANG LISTA</h1>
@@ -120,6 +137,7 @@
 
 </body>
 </html>
+
 
 
 
