@@ -365,33 +365,7 @@ window.addEventListener('click', function(event) {
 });
 
 // Funkcija za Logout
-async function handleLogout() {
-    await _supabase.auth.signOut();
-    window.location.reload();
-}
 
-// 1. Funkcija za slanje mejla za resetovanje
-async function forgotPassword() {
-    const email = document.getElementById('auth-email').value.trim();
-    const msg = document.getElementById('auth-msg');
-
-    if (!email) {
-        alert("Molimo unesite Email u polje iznad!");
-        return;
-    }
-
-    const { error } = await _supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.href, // Vraća korisnika nazad na tvoju igricu
-    });
-
-    if (error) {
-        msg.innerText = "Greška: " + error.message;
-        msg.style.color = "red";
-    } else {
-        msg.innerText = "Mejl za resetovanje je poslat!";
-        msg.style.color = "#00ff00";
-    }
-}
 
 // Čim se skripta učita, slušaj promene u logovanju
 _supabase.auth.onAuthStateChange(async (event, session) => {
@@ -404,35 +378,7 @@ _supabase.auth.onAuthStateChange(async (event, session) => {
     }
 });
 
-// Funkcija koja zapravo menja šifru u bazi
-async function updatePassword() {
-    const newPass = document.getElementById('new-password').value;
-    const msg = document.getElementById('reset-msg');
 
-    if (newPass.length < 6) {
-        alert("Lozinka mora imati bar 6 karaktera!");
-        return;
-    }
-
-    // Pošto je korisnik došao preko linka, on je "ulogovan" i ovo će raditi:
-    const { error } = await _supabase.auth.updateUser({ password: newPass });
-
-    if (error) {
-        msg.innerText = "Greška: " + error.message;
-        msg.style.color = "red";
-    } else {
-        msg.innerText = "Lozinka uspešno promenjena!";
-        msg.style.color = "#00ff00";
-        
-        // Posle 2 sekunde ga odjavi i vrati na login stranu da se uloguje sa novom šifrom
-        setTimeout(async () => {
-            await _supabase.auth.signOut();
-            document.getElementById('resetPasswordModal').style.display = 'none';
-            window.location.hash = ""; // Čisti URL od tokena
-            navigate('page-auth'); 
-        }, 2000);
-    }
-}
 // --- EXPRESS PASSWORD RESET SISTEM ---
 
 // 1. Funkcija koja šalje mejl (Zameni staru forgotPassword ovim)
@@ -504,5 +450,6 @@ async function executeExpressReset() {
         }, 2000);
     }
 }
+
 
 
