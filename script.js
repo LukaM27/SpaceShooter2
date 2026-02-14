@@ -376,6 +376,31 @@ window.addEventListener('keydown', function(e) {
 }, true); // Ovo 'true' na kraju je najbitnije!
 
 
+// OVO REŠAVA PROBLEM NA KOMPJUTERU
+window.addEventListener('keydown', function(e) {
+    // Proveravamo da li je kursor trenutno u nekom input polju
+    if (e.target.tagName === 'INPUT' || e.target.id === 'auth-email' || e.target.id === 'auth-password') {
+        
+        // e.stopImmediatePropagation() je "nuklearna" opcija - 
+        // ona kaže browseru: "Izvrši kucanje slova i nemoj nikome drugom (Unity-ju) javiti da se taster desio"
+        e.stopImmediatePropagation();
+        
+        return true; 
+    }
+}, true); // 'true' ovde znači da hvatamo taster u "capture" fazi (pre svih ostalih)
+
+// Dodatno: Kada korisnik uđe u polje, privremeno reci Unity-ju da ignoriše tastaturu
+const inputs = [document.getElementById('auth-email'), document.getElementById('auth-password')];
+inputs.forEach(inp => {
+    if(inp) {
+        inp.addEventListener('focus', () => {
+            if (window.unityInstance) {
+                // Isključuje kradju fokusa (ako Unity verzija podržava)
+                window.unityInstance.SendMessage("Canvas", "SetKeyboardFocus", 0);
+            }
+        });
+    }
+});
 
 
 
