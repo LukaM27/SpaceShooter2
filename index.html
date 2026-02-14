@@ -87,10 +87,40 @@
     </section>
 
 </main>
+<div id="infoModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button">&times;</span>
+        
+        <div class="info-section">
+            <h2 style="color: #ff0000;">Kako se igra? 🎮</h2>
+            <p>1. Kupi bilo šta u <strong>Gigatronu</strong>.</p>
+            <p>2. Skeniraj QR kod sa fiskalnog računa.</p>
+            <p>3. Sakupljaj bodove i osvoji nagrade!</p>
+            <small>Napomena: Važe samo računi sa PIB-om: 102778428</small>
+        </div>
 
+        <hr style="margin: 20px 0; border: 0.5px solid #333;">
+
+        <div id="userAccountInfo" style="display: none;">
+            <h3 style="color: #00ff00;">Tvoj Status 👤</h3>
+            <div style="background: #222; padding: 10px; border-radius: 5px;">
+                <p>Email: <strong id="infoEmail">/</strong></p>
+                <p>Bodovi: <strong id="infoPoints">0</strong></p>
+            </div>
+            <button onclick="handleLogout()" class="logout-btn">Odjavi se</button>
+        </div>
+
+        <div id="guestMessage">
+            <p><em>Prijavi se da vidiš svoje bodove.</em></p>
+        </div>
+    </div>
+</div>
 <script src="script.js"></script>
+
+
 </body>
 </html>
+
 
 
 
