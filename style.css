@@ -408,6 +408,53 @@ tr:first-child td { color: var(--yellow); font-weight: 700; font-size: 18px; }
     z-index: 5001 !important;
     pointer-events: auto !important;
 }
+/* Stil za pozadinu modala */
+.modal {
+    display: none; 
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.85);
+    backdrop-filter: blur(5px);
+}
+
+/* Stil za beli/tamni prozor unutra */
+.modal-content {
+    background-color: #111;
+    margin: 15% auto;
+    padding: 25px;
+    border: 1px solid #ff0000;
+    width: 85%;
+    max-width: 400px;
+    border-radius: 15px;
+    color: white;
+    position: relative;
+    font-family: sans-serif;
+    text-align: center;
+}
+
+.close-button {
+    position: absolute;
+    right: 15px;
+    top: 10px;
+    font-size: 30px;
+    cursor: pointer;
+    color: #ff0000;
+}
+
+.logout-btn {
+    margin-top: 15px;
+    background: #ff0000;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
 
 
 
