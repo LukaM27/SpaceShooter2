@@ -97,46 +97,53 @@
 
 </main>
 <div id="infoModal" class="modal">
-    <div class="modal-content">
-        <span class="close-button">&times;</span>
+    <div class="modal-content" style="border: 1px solid #ffd700; background: #111;">
+        <span class="close-button" style="color: #ffd700;">&times;</span>
         
         <div class="info-section">
-            <h2 style="color: #ff0000;">Kako se igra? 🎮</h2>
+            <h2 style="color: #ffd700; font-family: 'Orbitron', sans-serif; font-size: 1.2rem;">Kako se igra? 🎮</h2>
             <p>1. Kupi bilo šta u <strong>Gigatronu</strong>.</p>
             <p>2. Skeniraj QR kod sa fiskalnog računa.</p>
             <p>3. Sakupljaj bodove i osvoji nagrade!</p>
-            <small>Napomena: Važe samo računi sa PIB-om: 102778428</small>
+            <small style="color: #888;">Napomena: Važe samo računi sa PIB-om: 102778428</small>
         </div>
 
-        <hr style="margin: 20px 0; border: 0.5px solid #333;">
+        <hr style="margin: 20px 0; border: 0.5px solid #ffd700; opacity: 0.3;">
 
         <div id="userAccountInfo" style="display: none;">
-            <h3 style="color: #00ff00;">Tvoj Status 👤</h3>
-            <div style="background: #222; padding: 10px; border-radius: 5px;">
-                <p>Email: <strong id="infoEmail">/</strong></p>
-                <p>Bodovi: <strong id="infoPoints">0</strong></p>
+            <h3 style="color: #ffd700; font-family: 'Orbitron', sans-serif; font-size: 1rem;">Tvoj Status 👤</h3>
+            <div style="background: #222; padding: 15px; border-radius: 8px; border-left: 3px solid #ffd700; margin-bottom: 15px;">
+                <p style="margin: 5px 0;">Email: <strong id="infoEmail" style="color: #fff;">/</strong></p>
+                <p style="margin: 5px 0;">Bodovi: <strong id="infoPoints" style="color: #ffd700; font-size: 1.2rem;">0</strong></p>
             </div>
-            <button onclick="handleLogout()" class="logout-btn">Odjavi se</button>
+            <button onclick="handleLogout()" class="logout-btn" style="width: 100%; padding: 10px; background: transparent; border: 1px solid #ff4444; color: #ff4444; border-radius: 5px; cursor: pointer; transition: 0.3s;">Odjavi se</button>
         </div>
 
         <div id="guestMessage">
-            <p><em>Prijavi se da vidiš svoje bodove.</em></p>
+            <p style="color: #ffd700; text-align: center;"><em>Prijavi se da vidiš svoje bodove.</em></p>
         </div>
     </div>
 </div>
 <script src="script.js"></script>
-<div id="expressResetModal" class="modal" style="display: none; position: fixed; z-index: 10001; background: rgba(0,0,0,0.95); width: 100%; height: 100%; top: 0; left: 0;">
-    <div class="modal-content" style="margin: 25% auto; padding: 30px; border: 2px solid #ff0000; background: #111; color: white; text-align: center; border-radius: 15px;">
-        <h2 style="color: #ff0000; font-family: 'Orbitron', sans-serif;">RESET LOZINKE</h2>
-        <p>Identitet potvrđen. Unesite novu lozinku:</p>
-        <input type="password" id="express-new-password" placeholder="Nova lozinka (min. 6 karaktera)" style="width: 100%; padding: 12px; margin: 20px 0; background: #222; color: white; border: 1px solid #444; border-radius: 5px;">
-        <button class="btn" onclick="executeExpressReset()" style="width: 100%;">SAČUVAJ I PRIJAVI SE</button>
-        <p id="express-reset-msg" style="margin-top: 15px;"></p>
+<div id="expressResetModal" class="modal" style="display: none; position: fixed; z-index: 10001; background: rgba(0,0,0,0.9); width: 100%; height: 100%; top: 0; left: 0;">
+    <div class="modal-content" style="margin: 20% auto; padding: 30px; border: 2px solid #ffd700; background: #111; color: white; text-align: center; border-radius: 15px; max-width: 400px; box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);">
+        <h2 style="color: #ffd700; font-family: 'Orbitron', sans-serif; letter-spacing: 2px; margin-bottom: 20px;">NOVA LOZINKA</h2>
+        <p style="font-size: 0.9rem; color: #ccc;">Identitet potvrđen. Unesite novu lozinku za vaš nalog:</p>
+        
+        <input type="password" id="express-new-password" placeholder="Min. 6 karaktera" 
+               style="width: 100%; padding: 12px; margin: 20px 0; background: #222; color: white; border: 1px solid #333; border-radius: 5px; text-align: center; font-size: 1rem;">
+        
+        <button class="btn" onclick="executeExpressReset()" style="width: 100%; background: #ffd700; color: black; font-weight: bold; border: none; padding: 12px; border-radius: 5px; cursor: pointer; font-family: 'Orbitron', sans-serif;">
+            SAČUVAJ I NASTAVI
+        </button>
+        
+        <p id="express-reset-msg" style="margin-top: 15px; font-weight: bold; min-height: 1.2em;"></p>
     </div>
 </div>
 
 </body>
 </html>
+
 
 
 
