@@ -396,5 +396,19 @@ tr:first-child td { color: var(--yellow); font-weight: 700; font-size: 18px; }
     z-index: 10;
 }
 
+/* Forsiramo vidljivost i prioritet za auth stranu */
+#page-auth.active {
+    position: relative;
+    z-index: 5000 !important; /* Mnogo veće od Unity-ja i headera */
+}
+
+/* Osiguravamo da inputi primaju komande miša i tastature */
+#auth-email, #auth-password {
+    position: relative;
+    z-index: 5001 !important;
+    pointer-events: auto !important;
+}
+
+
 
 
