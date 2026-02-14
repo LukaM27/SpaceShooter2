@@ -276,14 +276,30 @@ async function showLeaderboard() {
     }
 }
 
-// --- FINALNI FIX ZA TASTATURU (RAČUNAR) ---
+// FORSIRANO KUCANJE - POSLEDNJA NADA
 window.addEventListener('keydown', function(e) {
-    if (e.target.tagName === 'INPUT') {
-        // stopImmediatePropagation sprečava Unity skriptu da presretne taster
-        e.stopImmediatePropagation();
-        return true;
+    const activeInput = document.activeElement;
+    
+    // Proveravamo da li je kursor u Email ili Password polju
+    if (activeInput && (activeInput.id === 'auth-email' || activeInput.id === 'auth-password')) {
+        
+        // 1. Ako je taster Backspace - obriši poslednji karakter
+        if (e.key === 'Backspace') {
+            activeInput.value = activeInput.value.slice(0, -1);
+        } 
+        // 2. Ako je običan karakter (slovo, broj, simbol)
+        else if (e.key.length === 1) {
+            activeInput.value += e.key;
+        }
+
+        // OVO JE KLJUČNO:
+        e.preventDefault(); // Ne daj Unity-ju da vidi taster
+        e.stopPropagation(); // Zaustavi dalje širenje
+        e.stopImmediatePropagation(); // Zaustavi apsolutno sve druge skripte (Unity)
+        
+        return false;
     }
-}, true); // 'true' hvata event pre Unity-ja
+}, true); // 'true' znači da hvatamo taster pre nego što Unity uopšte trepne
 
 const container = document.getElementById("unity-container");
 const canvas = document.getElementById("unity-canvas");
@@ -295,3 +311,4 @@ function resizeUnityCanvas() {
 }
 window.addEventListener("resize", resizeUnityCanvas);
 resizeUnityCanvas();
+
