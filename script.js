@@ -62,22 +62,22 @@ async function onScanSuccess(decodedText) {
     
     console.log("Skenirano:", decodedText);
     
-    // 1. Provera PIB-a Gigatrona
+
     if (!decodedText.includes("102778428")) {
         alert("Nevažeći račun!");
         return;
     }
 
     try {
-        // 2. Izvlačenje parametara iz QR koda
-        const urlParams = new URL(decodedText);
-        const dt = urlParams.searchParams.get("dt"); // Datum i vreme izdavanja
-        const iznos = parseFloat(urlParams.searchParams.get("as")); // Ukupan iznos
 
-        // 3. Provera datuma (Izmenjeno: Od 10.02.2026 do 31.12.2026)
-        // Format dt iz QR koda je YYYYMMDDHHMMSS
+        const urlParams = new URL(decodedText);
+        const dt = urlParams.searchParams.get("dt");
+        const iznos = parseFloat(urlParams.searchParams.get("as"));
+
+
+
         const godina = parseInt(dt.substring(0, 4));
-        const mesec = parseInt(dt.substring(4, 6)) - 1; // JS meseci 0-11
+        const mesec = parseInt(dt.substring(4, 6)) - 1; 
         const dan = parseInt(dt.substring(6, 8));
         const datumRacuna = new Date(godina, mesec, dan);
 
@@ -89,7 +89,7 @@ async function onScanSuccess(decodedText) {
             return;
         }
 
-        // 4. Provera iznosa (Minimalno 3000 RSD)
+
         if (isNaN(iznos) || iznos < 3000) {
             alert(`Minimalni iznos za igru je 3000 RSD. Vaš račun iznosi: ${iznos || 0} RSD.`);
             return;
@@ -580,3 +580,4 @@ window.addEventListener('storage', (event) => {
         setTimeout(() => { window.close(); }, 5000);
     }
 });
+
