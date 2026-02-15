@@ -59,67 +59,75 @@ async function startScanner() {
 
 async function onScanSuccess(decodedText) {
     if (isProcessingScan) return; 
-    
-    console.log("Skenirano:", decodedText);
-    
-    // 1. Provera PIB-a Gigatrona
-    if (!decodedText.includes("102778428")) {
-        alert("Nevažeći račun!");
+
+    // 1. Osnovna provera domena (da li je uopšte fiskalni link)
+    if (!decodedText.startsWith("https://tap.sfr.urs.gov.rs")) {
+        alert("Nevažeći kod. Molimo skenirajte originalni QR kod sa fiskalnog računa.");
         return;
     }
 
+    isProcessingScan = true;
+    const status = document.getElementById('scan-status');
+    status.innerText = "Proveravam račun kod Poreske uprave...";
+
     try {
-        // 2. Izvlačenje parametara iz QR koda
-        const urlParams = new URL(decodedText);
-        const dt = urlParams.searchParams.get("dt"); // Datum i vreme izdavanja
-        const iznos = parseFloat(urlParams.searchParams.get("as")); // Ukupan iznos
-
-        // 3. Provera datuma (Mora biti pre 10.02.2026)
-        const datumRacuna = new Date(dt);
-        const granicaDatuma = new Date("2026-02-10T00:00:00");
-
-        if (datumRacuna >= granicaDatuma) {
-            alert("Račun je previše nov! Prihvatamo samo račune izdate pre 10.02.2026.");
-            return;
-        }
-
-        // 4. Provera iznosa (Minimalno 3000 RSD)
-        if (isNaN(iznos) || iznos < 3000) {
-            alert(`Minimalni iznos za igru je 3000 RSD. Vaš račun iznosi: ${iznos || 0} RSD.`);
-            return;
-        }
-
-        isProcessingScan = true; 
-        scannedReceiptId = urlParams.searchParams.get('vl') || decodedText.slice(-30);
+        // 2. "Ping" provera - Pozivamo server Poreske preko Proxy-ja
+        // Koristimo allorigins proxy da zaobiđemo CORS blokadu
+        const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(decodedText);
         
+        const response = await fetch(proxyUrl);
+        const data = await response.json();
+
+        // 3. Provera sadržaja: Ako račun ne postoji, stranica će sadržati "Račun nije pronađen" 
+        // ili sličnu poruku. Ako je ispravan, sadržaće detalje.
+        if (!data.contents || data.contents.includes("neispravan") || data.contents.includes("nije pronađen")) {
+            alert("Poreska uprava ne prepoznaje ovaj račun. Falsifikat!");
+            isProcessingScan = false;
+            status.innerText = "Spremite Gigatron račun...";
+            return;
+        }
+
+        // 4. Ako je prošao "Ping", nastavljamo sa tvojom logikom (PIB, Iznos, Duplikati)
+        const urlParams = new URL(decodedText);
+        const pib = urlParams.searchParams.get("pib");
+        const iznos = parseFloat(urlParams.searchParams.get("as"));
+        scannedReceiptId = urlParams.searchParams.get('vl') || decodedText.slice(-30);
+
+        if (pib !== "102778428") {
+            alert("Ovo je ispravan račun, ali nije iz Gigatrona!");
+            isProcessingScan = false;
+            return;
+        }
+
+        if (iznos < 3000) {
+            alert("Iznos na računu mora biti najmanje 3000 RSD.");
+            isProcessingScan = false;
+            return;
+        }
+
+        // Provera duplikata u bazi
         const { data: existing } = await _supabase
             .from('scanned_receipts')
             .select('receipt_id')
             .eq('receipt_id', scannedReceiptId)
             .maybeSingle();
-        
+
         if (existing) {
             alert("Ovaj račun je već iskorišćen!");
             isProcessingScan = false;
             return;
         }
 
-        const { error: insertError } = await _supabase
-            .from('scanned_receipts')
-            .insert([{ receipt_id: scannedReceiptId, scanned_by: "IN_PROGRESS" }]);
-
-        if (insertError) throw insertError;
-
-        if (html5QrCode) {
-            await html5QrCode.stop().catch(() => {});
-        }
+        // Sve je u redu - upisujemo i krećemo igru
+        await _supabase.from('scanned_receipts').insert([{ receipt_id: scannedReceiptId, scanned_by: "IN_PROGRESS" }]);
         
+        if (html5QrCode) await html5QrCode.stop().catch(() => {});
         navigate('page-game');
         loadUnityGame();
 
     } catch (err) {
-        console.error("Greška pri validaciji koda:", err);
-        alert("QR kod nije prepoznat kao validan fiskalni račun.");
+        console.error("Greška pri verifikaciji:", err);
+        alert("Sistem Poreske uprave trenutno nije dostupan. Pokušajte kasnije.");
         isProcessingScan = false;
     }
 }
@@ -574,3 +582,4 @@ window.addEventListener('storage', (event) => {
         setTimeout(() => { window.close(); }, 5000);
     }
 });
+
