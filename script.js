@@ -428,33 +428,28 @@ async function forgotPassword() {
 window.addEventListener('load', async () => {
     const url = window.location.href;
     
-    // Ako URL sadrži access_token, znači da je korisnik došao iz MEJLA (potvrda ili reset)
     if (url.includes("access_token")) {
-        
-        // --- KLJUČNI FIX: Prvo izbacujemo starog korisnika ako postoji ---
-        await _supabase.auth.signOut();
-        console.log("Stara sesija očišćena, učitavam novi nalog iz linka...");
-        // ----------------------------------------------------------------
-
         const hash = window.location.hash.substring(1);
         const params = new URLSearchParams(hash);
         const type = params.get("type");
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
 
         console.log("Detektovan token tipa:", type);
 
+        // OBAVEZNO: Odmah očisti URL da se ne bi vrteli u krug
+        history.replaceState(null, null, window.location.pathname);
+
+        // DIREKTNO POSTAVLJANJE SESIJE (Ovo gazi starog korisnika novim bez logout-a)
+        if (accessToken && refreshToken) {
+            await _supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
+            });
+        }
+
         // 1. RECOVERY (Promena šifre)
         if (type === "recovery" || url.includes("type=recovery")) {
-            const accessToken = params.get("access_token");
-            const refreshToken = params.get("refresh_token");
-
-            if (accessToken && refreshToken) {
-                await _supabase.auth.setSession({
-                    access_token: accessToken,
-                    refresh_token: refreshToken
-                });
-                history.replaceState(null, null, window.location.pathname);
-            }
-
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             const modal = document.getElementById('expressResetModal');
             if (modal) modal.style.display = 'block';
@@ -462,39 +457,33 @@ window.addEventListener('load', async () => {
         
         // 2. SIGNUP (Potvrda naloga)
         else if (type === "signup" || type === "invite") {
-            // Čistimo URL odmah
-            history.replaceState(null, null, window.location.pathname);
-
-            // Uzimamo poene koje smo "parkirali" pre slanja mejla
             const savedPoints = localStorage.getItem('pending_points');
             const savedReceipt = localStorage.getItem('pending_receipt');
 
-            // Čekamo par milisekundi da Supabase procesira novi token nakon signOut-a
-            setTimeout(async () => {
-                const { data: { user } } = await _supabase.auth.getUser();
+            // Uzimamo korisnika iz tek postavljene sesije
+            const { data: { user } } = await _supabase.auth.getUser();
+            
+            if (user) {
+                console.log("Novi korisnik identifikovan:", user.email);
                 
-                if (user) {
-                    // Sada je 'user' definitivno onaj novi iz mejla!
-                    if (savedPoints) {
-                        currentScore = parseInt(savedPoints);
-                        scannedReceiptId = savedReceipt;
-                        
-                        const msg = document.getElementById('auth-msg'); 
-                        if (msg) msg.innerText = "Bodovi se upisuju na novi nalog...";
-
-                        await saveScore(user.email, msg);
-                        
-                        localStorage.removeItem('pending_points');
-                        localStorage.removeItem('pending_receipt');
-                    }
+                if (savedPoints && savedPoints !== "0") {
+                    currentScore = parseInt(savedPoints);
+                    scannedReceiptId = savedReceipt;
                     
-                    await showLeaderboard();
-                    navigate('page-leaderboard');
-                } else {
-                    // Ako iz nekog razloga nema usera, samo baci na leaderboard
-                    navigate('page-leaderboard');
+                    const msg = document.getElementById('auth-msg'); 
+                    if (msg) msg.innerText = "Bodovi se upisuju...";
+
+                    // Upisujemo bodove na NOVOG korisnika
+                    await saveScore(user.email, msg);
+                    
+                    localStorage.removeItem('pending_points');
+                    localStorage.removeItem('pending_receipt');
                 }
-            }, 500); 
+
+                // Forsirana navigacija na rang listu
+                await showLeaderboard();
+                navigate('page-leaderboard');
+            }
         }
     }
 });
@@ -566,6 +555,7 @@ window.addEventListener('storage', (event) => {
         setTimeout(() => { window.close(); }, 5000);
     }
 });
+
 
 
 
