@@ -166,7 +166,7 @@ async function handleAuth() {
     msg.style.color = "var(--yellow)";
 
     try {
-        // 1. Pokušaj prijave (Logika: Ako se uloguje, znači da je POTVRĐEN)
+        
         const { data: signInData, error: signInError } = await _supabase.auth.signInWithPassword({
             email: email,
             password: password,
@@ -178,14 +178,14 @@ async function handleAuth() {
             return;
         }
 
-        // POSEBAN FIX: Ako nalog postoji ali MEJL NIJE POTVRĐEN
+       
         if (signInError.message.includes("Email not confirmed")) {
             msg.innerText = "Nalog postoji, ali mejl nije potvrđen! Proverite inbox.";
             msg.style.color = "orange";
             return;
         }
 
-        // 2. Ako nalog ne postoji (Invalid credentials), kreiraj ga
+       
         if (signInError.message.includes("Invalid login credentials") || signInError.status === 400) {
             
             const { data: userExists } = await _supabase
@@ -197,7 +197,7 @@ async function handleAuth() {
             if (userExists) {
                 throw new Error("Pogrešna lozinka za ovaj nalog!");
             } else {
-                // REGISTRACIJA NOVOG KORISNIKA
+               
                 const { data: signUpData, error: signUpError } = await _supabase.auth.signUp({
                     email: email,
                     password: password,
@@ -205,14 +205,12 @@ async function handleAuth() {
 
                 if (signUpError) throw signUpError;
 
-                // KLJUČNA PROMENA: 
-                // Ako je Supabase vratio sesiju (session), znači da je auto-confirm uključen
+               
                 if (signUpData.session) {
                     console.log("Nalog kreiran i automatski potvrđen!");
                     await saveScore(email, msg);
                 } else {
-                    // Ako nema sesije, znači da MORA na mejl. 
-                    // NE zovemo saveScore ovde! Samo "parkiramo" podatke.
+                    
                     localStorage.setItem('pending_points', currentScore);
                     localStorage.setItem('pending_receipt', scannedReceiptId);
                     
@@ -437,10 +435,10 @@ window.addEventListener('load', async () => {
 
         console.log("Detektovan token tipa:", type);
 
-        // OBAVEZNO: Odmah očisti URL da se ne bi vrteli u krug
+        
         history.replaceState(null, null, window.location.pathname);
 
-        // DIREKTNO POSTAVLJANJE SESIJE (Ovo gazi starog korisnika novim bez logout-a)
+        
         if (accessToken && refreshToken) {
             await _supabase.auth.setSession({
                 access_token: accessToken,
@@ -448,19 +446,19 @@ window.addEventListener('load', async () => {
             });
         }
 
-        // 1. RECOVERY (Promena šifre)
+        
         if (type === "recovery" || url.includes("type=recovery")) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             const modal = document.getElementById('expressResetModal');
             if (modal) modal.style.display = 'block';
         } 
         
-        // 2. SIGNUP (Potvrda naloga)
+       
         else if (type === "signup" || type === "invite") {
             const savedPoints = localStorage.getItem('pending_points');
             const savedReceipt = localStorage.getItem('pending_receipt');
 
-            // Uzimamo korisnika iz tek postavljene sesije
+           
             const { data: { user } } = await _supabase.auth.getUser();
             
             if (user) {
@@ -473,14 +471,14 @@ window.addEventListener('load', async () => {
                     const msg = document.getElementById('auth-msg'); 
                     if (msg) msg.innerText = "Bodovi se upisuju...";
 
-                    // Upisujemo bodove na NOVOG korisnika
+                    
                     await saveScore(user.email, msg);
                     
                     localStorage.removeItem('pending_points');
                     localStorage.removeItem('pending_receipt');
                 }
 
-                // Forsirana navigacija na rang listu
+                
                 await showLeaderboard();
                 navigate('page-leaderboard');
             }
@@ -555,6 +553,7 @@ window.addEventListener('storage', (event) => {
         setTimeout(() => { window.close(); }, 5000);
     }
 });
+
 
 
 
