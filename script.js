@@ -10,15 +10,19 @@ let scannedReceiptId = "";
 let isProcessingScan = false; 
 let unityInstance = null;
 
-// --- NAVIGACIJA ---
 function navigate(id) {
     console.log("Navigacija na:", id);
     const pages = document.querySelectorAll('.page');
     pages.forEach(p => p.classList.remove('active'));
+    
 
     const unityCont = document.getElementById('unity-container');
     if (unityCont) {
-        unityCont.style.display = (id === 'page-game') ? 'block' : 'none';
+        if (id === 'page-game') {
+            unityCont.style.display = 'block';
+        } else {
+            unityCont.style.display = 'none';
+        }
     }
 
     const target = document.getElementById(id);
@@ -29,7 +33,6 @@ function navigate(id) {
     }
 }
 
-// --- SKENER LOGIKA ---
 async function startScanner() {
     console.log("Funkcija startScanner je pozvana!");
     const status = document.getElementById('scan-status');
@@ -58,72 +61,41 @@ async function onScanSuccess(decodedText) {
     if (isProcessingScan) return; 
     
     console.log("Skenirano:", decodedText);
-    const status = document.getElementById('scan-status');
-
-    // 1. Osnovna provera domena Poreske uprave
-    if (!decodedText.startsWith("https://tap.sfr.urs.gov.rs")) {
-        alert("Nevažeći kod. Skenirajte isključivo originalni QR kod sa fiskalnog računa.");
+    
+    // 1. Provera PIB-a Gigatrona
+    if (!decodedText.includes("102778428")) {
+        alert("Nevažeći račun!");
         return;
     }
 
-    isProcessingScan = true;
-    status.innerText = "Verifikacija računa (Edge Function)...";
-
     try {
-        // 2. POZIV SUPABASE EDGE FUNKCIJE
-        const { data: edgeData, error: edgeError } = await _supabase.functions.invoke('verify-receipt', {
-            body: { receiptUrl: decodedText }
-        });
-
-        if (edgeError || !edgeData || edgeData.valid === false) {
-            alert("Poreska uprava ne prepoznaje ovaj račun ili je falsifikovan!");
-            isProcessingScan = false;
-            status.innerText = "Skeniranje neuspešno.";
-            return;
-        }
-
-        // 3. Izvlačenje parametara (PIB, Iznos, Datum)
+        // 2. Izvlačenje parametara iz QR koda
         const urlParams = new URL(decodedText);
-        const pib = urlParams.searchParams.get("pib");
-        const dt = urlParams.searchParams.get("dt"); 
-        const iznos = parseFloat(urlParams.searchParams.get("as"));
+        const dt = urlParams.searchParams.get("dt"); // Datum i vreme izdavanja
+        const iznos = parseFloat(urlParams.searchParams.get("as")); // Ukupan iznos
 
-        // Provera da li je Gigatron (PIB: 102778428)
-        if (pib !== "102778428") {
-            alert("Ovo je ispravan račun, ali nije iz Gigatrona!");
-            isProcessingScan = false;
-            return;
-        }
-
-        // --- NOVO: PROVERA DATUMA (10.02.2026 - 31.12.2026) ---
+        // 3. Provera datuma (Izmenjeno: Od 10.02.2026 do 31.12.2026)
+        // Format dt iz QR koda je YYYYMMDDHHMMSS
         const godina = parseInt(dt.substring(0, 4));
-        const mesec = parseInt(dt.substring(4, 6)) - 1; // JS meseci idu od 0-11
+        const mesec = parseInt(dt.substring(4, 6)) - 1; // JS meseci 0-11
         const dan = parseInt(dt.substring(6, 8));
         const datumRacuna = new Date(godina, mesec, dan);
 
-        const pocetakKonkursa = new Date(2026, 1, 10); // 10.02.2026.
-        const krajKonkursa = new Date(2026, 11, 31, 23, 59, 59); // 31.12.2026.
+        const pocetakKonkursa = new Date("2026-02-10T00:00:00");
+        const krajKonkursa = new Date("2026-12-31T23:59:59");
 
-        if (datumRacuna < pocetakKonkursa) {
-            alert("Račun je izdat pre početka konkursa (10.02.2026).");
-            isProcessingScan = false;
+        if (datumRacuna < pocetakKonkursa || datumRacuna > krajKonkursa) {
+            alert("Račun nije u okviru perioda nagradne igre (10.02.2026 - 31.12.2026).");
             return;
         }
 
-        if (datumRacuna > krajKonkursa) {
-            alert("Račun je izvan perioda trajanja konkursa.");
-            isProcessingScan = false;
-            return;
-        }
-
-        // Provera iznosa
+        // 4. Provera iznosa (Minimalno 3000 RSD)
         if (isNaN(iznos) || iznos < 3000) {
-            alert(`Minimalni iznos je 3000 RSD. Vaš račun: ${iznos || 0} RSD.`);
-            isProcessingScan = false;
+            alert(`Minimalni iznos za igru je 3000 RSD. Vaš račun iznosi: ${iznos || 0} RSD.`);
             return;
         }
 
-        // 4. Provera duplikata u bazi
+        isProcessingScan = true; 
         scannedReceiptId = urlParams.searchParams.get('vl') || decodedText.slice(-30);
         
         const { data: existing } = await _supabase
@@ -138,28 +110,26 @@ async function onScanSuccess(decodedText) {
             return;
         }
 
-        // 5. Upis u bazu pod statusom "U TOKU"
         const { error: insertError } = await _supabase
             .from('scanned_receipts')
             .insert([{ receipt_id: scannedReceiptId, scanned_by: "IN_PROGRESS" }]);
 
         if (insertError) throw insertError;
 
-        // Kraj skeniranja, prelazak na igru
-        if (html5QrCode) await html5QrCode.stop().catch(() => {});
+        if (html5QrCode) {
+            await html5QrCode.stop().catch(() => {});
+        }
         
-        status.innerText = "Račun potvrđen! Srećno!";
         navigate('page-game');
         loadUnityGame();
 
     } catch (err) {
-        console.error("Greška pri verifikaciji:", err);
-        alert("Sistem za verifikaciju trenutno nije dostupan.");
+        console.error("Greška pri validaciji koda:", err);
+        alert("QR kod nije prepoznat kao validan fiskalni račun.");
         isProcessingScan = false;
     }
 }
 
-// --- UNITY LOGIKA ---
 function loadUnityGame() {
     console.log("Pokrećem Unity instancu...");
     const canvas = document.querySelector("#unity-canvas");
@@ -187,6 +157,11 @@ function loadUnityGame() {
         }).then((instance) => {
             unityInstance = instance;
             console.log("Unity spreman!");
+            
+            if (instance.setModuleCanvasClickThrough) {
+                instance.setModuleCanvasClickThrough(true);
+            }
+
             if (loadingBar) loadingBar.style.display = "none";
         });
     };
@@ -199,7 +174,6 @@ window.SendScoreToDatabase = function(score) {
     document.getElementById('final-score-display').innerText = score;
 };
 
-// --- AUTH I ČUVANJE BODOVA ---
 async function handleAuth() {
     const emailField = document.getElementById('auth-email');
     const passwordField = document.getElementById('auth-password');
@@ -207,42 +181,80 @@ async function handleAuth() {
     const password = passwordField.value;
     const msg = document.getElementById('auth-msg');
 
+    emailField.blur();
+    passwordField.blur();
+
     if (!email || password.length < 6) {
         alert("Email je obavezan, a lozinka mora imati bar 6 karaktera!");
         return;
     }
 
     msg.innerText = "Provera naloga...";
+    msg.style.color = "var(--yellow)";
 
     try {
+        
         const { data: signInData, error: signInError } = await _supabase.auth.signInWithPassword({
             email: email,
             password: password,
         });
 
         if (!signInError) {
+            console.log("Prijava uspešna.");
             await saveScore(email, msg);
             return;
         }
 
-        const { data: signUpData, error: signUpError } = await _supabase.auth.signUp({
-            email: email,
-            password: password,
-        });
+       
+        if (signInError.message.includes("Email not confirmed")) {
+            msg.innerText = "Nalog postoji, ali mejl nije potvrđen! Proverite inbox.";
+            msg.style.color = "orange";
+            return;
+        }
 
-        if (signUpError) throw signUpError;
+       
+        if (signInError.message.includes("Invalid login credentials") || signInError.status === 400) {
+            
+            const { data: userExists } = await _supabase
+                .from('leaderboard')
+                .select('email')
+                .eq('email', email)
+                .maybeSingle();
 
-        if (signUpData.session) {
-            await saveScore(email, msg);
+            if (userExists) {
+                throw new Error("Pogrešna lozinka za ovaj nalog!");
+            } else {
+               
+                const { data: signUpData, error: signUpError } = await _supabase.auth.signUp({
+                    email: email,
+                    password: password,
+                });
+
+                if (signUpError) throw signUpError;
+
+               
+                if (signUpData.session) {
+                    console.log("Nalog kreiran i automatski potvrđen!");
+                    await saveScore(email, msg);
+                } else {
+                    
+                    localStorage.setItem('pending_points', currentScore);
+                    localStorage.setItem('pending_receipt', scannedReceiptId);
+                    
+                    msg.innerText = "POTVRDA: Poslat vam je mejl. Kliknite na link u njemu da se vaši bodovi upišu na rang listu!";
+                    msg.style.color = "var(--yellow)";
+                    
+                    console.log("Novi nalog čeka verifikaciju. Poeni sačuvani u localStorage.");
+                }
+            }
         } else {
-            localStorage.setItem('pending_points', currentScore);
-            localStorage.setItem('pending_receipt', scannedReceiptId);
-            msg.innerText = "Potvrdite email da biste sačuvali bodove!";
+            throw signInError;
         }
 
     } catch (err) {
+        console.error("Auth Error:", err);
         msg.innerText = err.message;
-        msg.style.color = "red";
+        msg.style.color = "var(--red)";
     }
 }
 
@@ -260,28 +272,42 @@ async function saveScore(email, msg) {
             email: email, 
             points: totalPoints, 
             last_scan_date: new Date().toISOString() 
-        });
+        }, { onConflict: 'email' });
 
         await _supabase.from('scanned_receipts')
             .update({ scanned_by: email })
             .eq('receipt_id', scannedReceiptId);
 
-        msg.innerText = "Poeni sačuvani!";
-        msg.style.color = "green";
+        msg.innerText = "Uspešno sačuvano!";
+        msg.style.color = "var(--green)";
         
         setTimeout(async () => {
             await showLeaderboard();
             navigate('page-leaderboard');
         }, 1500);
 
+const { data: receiptCheck } = await _supabase
+    .from('scanned_receipts')
+    .select('scanned_by')
+    .eq('receipt_id', scannedReceiptId)
+    .single();
+
+if (receiptCheck && receiptCheck.scanned_by !== "IN_PROGRESS") {
+    msg.innerText = "Ovaj račun je već iskorišćen!";
+    return;
+}
     } catch (e) {
+        console.error(e);
         msg.innerText = "Greška pri čuvanju.";
     }
 }
 
+
 async function showLeaderboard() {
     const lbBody = document.getElementById('lb-body');
     if (!lbBody) return;
+    lbBody.innerHTML = '<tr><td colspan="3">Učitavanje...</td></tr>';
+
     try {
         const { data, error } = await _supabase
             .from('leaderboard')
@@ -290,6 +316,7 @@ async function showLeaderboard() {
             .limit(10);
 
         if (error) throw error;
+
         lbBody.innerHTML = data.map((user, index) => `
             <tr>
                 <td>${index + 1}.</td>
@@ -298,16 +325,258 @@ async function showLeaderboard() {
             </tr>
         `).join('');
     } catch (err) {
-        lbBody.innerHTML = '<tr><td>Greška.</td></tr>';
+        lbBody.innerHTML = '<tr><td colspan="3">Greška pri učitavanju.</td></tr>';
     }
 }
 
-// --- DODATNI EVENTI ---
-window.addEventListener('load', async () => {
-    await showLeaderboard();
+
+window.addEventListener('keydown', function(e) {
+    const activeInput = document.activeElement;
+    
+
+    if (activeInput && (activeInput.id === 'auth-email' || activeInput.id === 'auth-password')) {
+        
+
+        if (e.key === 'Backspace') {
+            activeInput.value = activeInput.value.slice(0, -1);
+        } 
+
+        else if (e.key.length === 1) {
+            activeInput.value += e.key;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        return false;
+    }
+}, true);
+
+const container = document.getElementById("unity-container");
+const canvas = document.getElementById("unity-canvas");
+function resizeUnityCanvas() {
+    if(!container || !canvas) return;
+    const rect = container.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+}
+window.addEventListener("resize", resizeUnityCanvas);
+resizeUnityCanvas();
+
+
+async function toggleUserInfo() {
+    const modal = document.getElementById('infoModal');
+    const userSection = document.getElementById('userAccountInfo');
+    const guestMessage = document.getElementById('guestMessage');
+    const emailSpan = document.getElementById('infoEmail');
+    const pointsSpan = document.getElementById('infoPoints');
+
+
+    modal.style.display = 'block';
+
+    try {
+        const { data: { session } } = await _supabase.auth.getSession();
+        const user = session?.user;
+
+        if (user) {
+            guestMessage.style.display = 'none';
+            userSection.style.display = 'block';
+            emailSpan.innerText = user.email;
+
+            const { data: scoreData } = await _supabase
+                .from('leaderboard')
+                .select('points')
+                .eq('email', user.email)
+                .maybeSingle();
+
+            pointsSpan.innerText = scoreData ? scoreData.points : "0";
+        } else {
+            userSection.style.display = 'none';
+            guestMessage.style.display = 'block';
+        }
+    } catch (err) {
+        console.error("Greška kod modala:", err);
+    }
+}
+
+document.querySelector('.close-button').onclick = function() {
+    document.getElementById('infoModal').style.display = "none";
+};
+
+window.addEventListener('click', function(event) {
+    const modal = document.getElementById('infoModal');
+    if (event.target == modal) {
+        modal.style.display = "none";
+    }
 });
+
+
+
+_supabase.auth.onAuthStateChange(async (event, session) => {
+    console.log("Auth Event:", event);
+
+    if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && window.location.hash.includes("type=recovery"))) {
+        console.log("Korisnik potvrđen preko mejla. Otvaram prozor za novu šifru.");
+        document.getElementById('resetPasswordModal').style.display = 'block';
+    }
+});
+
+
+async function forgotPassword() {
+    const emailField = document.getElementById('auth-email');
+    const email = emailField.value.trim().toLowerCase();
+    const msg = document.getElementById('auth-msg');
+
+    if (!email) {
+        alert("Molimo unesite email!");
+        return;
+    }
+
+    localStorage.setItem('pending_points', currentScore);
+    localStorage.setItem('pending_receipt', scannedReceiptId);
+    console.log("Poeni privremeno sačuvani:", currentScore);
+
+    const { error } = await _supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + window.location.pathname, 
+    });
+
+    if (error) {
+        msg.innerText = "Greška: " + error.message;
+        msg.style.color = "red";
+    } else {
+        msg.innerText = "Mejl je poslat! Možete zatvoriti ovaj prozor i proveriti sanduče.";
+        msg.style.color = "var(--yellow)";
+    }
+}
+
+window.addEventListener('load', async () => {
+    const url = window.location.href;
+    
+    if (url.includes("access_token")) {
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        const type = params.get("type");
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
+
+        console.log("Detektovan token tipa:", type);
+
+        
+        history.replaceState(null, null, window.location.pathname);
+
+        
+        if (accessToken && refreshToken) {
+            await _supabase.auth.setSession({
+                access_token: accessToken,
+                refresh_token: refreshToken
+            });
+        }
+
+        
+        if (type === "recovery" || url.includes("type=recovery")) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            const modal = document.getElementById('expressResetModal');
+            if (modal) modal.style.display = 'block';
+        } 
+        
+       
+        else if (type === "signup" || type === "invite") {
+            const savedPoints = localStorage.getItem('pending_points');
+            const savedReceipt = localStorage.getItem('pending_receipt');
+
+           
+            const { data: { user } } = await _supabase.auth.getUser();
+            
+            if (user) {
+                console.log("Novi korisnik identifikovan:", user.email);
+                
+                if (savedPoints && savedPoints !== "0") {
+                    currentScore = parseInt(savedPoints);
+                    scannedReceiptId = savedReceipt;
+                    
+                    const msg = document.getElementById('auth-msg'); 
+                    if (msg) msg.innerText = "Bodovi se upisuju...";
+
+                    
+                    await saveScore(user.email, msg);
+                    
+                    localStorage.removeItem('pending_points');
+                    localStorage.removeItem('pending_receipt');
+                }
+
+                
+                await showLeaderboard();
+                navigate('page-leaderboard');
+            }
+        }
+    }
+});
+
+async function executeExpressReset() {
+    const newPass = document.getElementById('express-new-password').value;
+    const msg = document.getElementById('express-reset-msg');
+
+    if (newPass.length < 6) {
+        alert("Lozinka mora imati barem 6 karaktera!");
+        return;
+    }
+
+    const savedPoints = localStorage.getItem('pending_points');
+    const savedReceipt = localStorage.getItem('pending_receipt');
+    
+    localStorage.removeItem('pending_points');
+    localStorage.removeItem('pending_receipt');
+
+    if (!savedPoints || savedPoints === "0") {
+        msg.innerText = "Bodovi su već obrađeni ili ne postoje.";
+        msg.style.color = "orange";
+        setTimeout(() => window.location.reload(), 2000);
+        return;
+    }
+
+    msg.innerText = "Čuvam lozinku i bodove...";
+    
+    const { error: updateError } = await _supabase.auth.updateUser({ password: newPass });
+
+    if (updateError) {
+        msg.innerText = "Greška: " + updateError.message;
+        msg.style.color = "red";
+    } else {
+        currentScore = parseInt(savedPoints);
+        scannedReceiptId = savedReceipt;
+
+        const { data: { user } } = await _supabase.auth.getUser();
+        if (user) {
+            await saveScore(user.email, msg);
+
+            setTimeout(() => {
+                document.getElementById('expressResetModal').style.display = 'none';
+            }, 1000);
+        }
+    }
+}
+
 
 async function handleLogout() {
     await _supabase.auth.signOut();
     window.location.reload();
 }
+
+
+window.addEventListener('storage', (event) => {
+    if (event.key === 'pending_points' && event.newValue === null) {
+        console.log("Poeni sačuvani u drugom tabu. Uništavam ovaj tab...");
+        
+        document.body.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; background:#111; color:#ffd700; text-align:center; font-family:'Orbitron', sans-serif; padding:20px;">
+                <h2 style="font-size:1.8rem; margin-bottom:20px;">GIGATRON SCAN2WIN</h2>
+                <div style="font-size:5rem; margin-bottom:20px;">✅</div>
+                <p style="font-size:1.2rem; color:white;">Bodovi su uspešno sačuvani u novom prozoru!</p>
+                <p style="color:#888; margin-top:10px;">Ovaj prozor više nije potreban.</p>
+                <button onclick="window.location.href='index.html'" style="margin-top:30px; padding:12px 25px; background:#ffd700; border:none; border-radius:5px; cursor:pointer; font-weight:bold; font-family:'Orbitron';">NAZAD NA POČETNU</button>
+            </div>
+        `;
+        setTimeout(() => { window.close(); }, 5000);
+    }
+});
