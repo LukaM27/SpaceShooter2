@@ -60,52 +60,38 @@ async function startScanner() {
 async function onScanSuccess(decodedText) {
     if (isProcessingScan) return; 
 
-    // 1. Osnovna provera domena (da li je uopšte fiskalni link)
+    // 1. Osnovna provera da li je link uopšte sa Poreske
     if (!decodedText.startsWith("https://tap.sfr.urs.gov.rs")) {
-        alert("Nevažeći kod. Molimo skenirajte originalni QR kod sa fiskalnog računa.");
+        alert("Nevažeći kod. Skenirajte isključivo originalni QR kod sa fiskalnog računa.");
         return;
     }
 
     isProcessingScan = true;
     const status = document.getElementById('scan-status');
-    status.innerText = "Proveravam račun kod Poreske uprave...";
+    status.innerText = "Verifikacija računa u toku...";
 
     try {
-        // 2. "Ping" provera - Pozivamo server Poreske preko Proxy-ja
-        // Koristimo allorigins proxy da zaobiđemo CORS blokadu
-        const proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(decodedText);
-        
-        const response = await fetch(proxyUrl);
-        const data = await response.json();
+        // 2. POZIV TVOJE EDGE FUNKCIJE
+        // Ovo menja onaj stari Proxy (allorigins)
+        const { data, error } = await _supabase.functions.invoke('verify-receipt', {
+            body: { receiptUrl: decodedText }
+        });
 
-        // 3. Provera sadržaja: Ako račun ne postoji, stranica će sadržati "Račun nije pronađen" 
-        // ili sličnu poruku. Ako je ispravan, sadržaće detalje.
-        if (!data.contents || data.contents.includes("neispravan") || data.contents.includes("nije pronađen")) {
-            alert("Poreska uprava ne prepoznaje ovaj račun. Falsifikat!");
+        // Ako Supabase vrati grešku u komunikaciji
+        if (error) throw new Error("Edge funkcija nije dostupna.");
+
+        // 3. PROVERA ODGOVORA (Validacija)
+        if (!data || data.valid === false) {
+            alert("Poreska uprava ne potvrđuje ovaj račun ili nije iz Gigatrona.");
             isProcessingScan = false;
-            status.innerText = "Spremite Gigatron račun...";
+            status.innerText = "Skeniranje neuspešno.";
             return;
         }
 
-        // 4. Ako je prošao "Ping", nastavljamo sa tvojom logikom (PIB, Iznos, Duplikati)
+        // 4. Nastavak sa proverom duplikata u tvojoj tabeli
         const urlParams = new URL(decodedText);
-        const pib = urlParams.searchParams.get("pib");
-        const iznos = parseFloat(urlParams.searchParams.get("as"));
         scannedReceiptId = urlParams.searchParams.get('vl') || decodedText.slice(-30);
 
-        if (pib !== "102778428") {
-            alert("Ovo je ispravan račun, ali nije iz Gigatrona!");
-            isProcessingScan = false;
-            return;
-        }
-
-        if (iznos < 3000) {
-            alert("Iznos na računu mora biti najmanje 3000 RSD.");
-            isProcessingScan = false;
-            return;
-        }
-
-        // Provera duplikata u bazi
         const { data: existing } = await _supabase
             .from('scanned_receipts')
             .select('receipt_id')
@@ -113,25 +99,30 @@ async function onScanSuccess(decodedText) {
             .maybeSingle();
 
         if (existing) {
-            alert("Ovaj račun je već iskorišćen!");
+            alert("Ovaj račun je već jednom iskorišćen za igru!");
             isProcessingScan = false;
             return;
         }
 
-        // Sve je u redu - upisujemo i krećemo igru
-        await _supabase.from('scanned_receipts').insert([{ receipt_id: scannedReceiptId, scanned_by: "IN_PROGRESS" }]);
+        // Ako je sve prošlo - Upisujemo u bazu i puštamo igru
+        await _supabase.from('scanned_receipts').insert([
+            { receipt_id: scannedReceiptId, scanned_by: "IN_PROGRESS" }
+        ]);
         
+        status.innerText = "Račun potvrđen! Pokrećem igru...";
         if (html5QrCode) await html5QrCode.stop().catch(() => {});
+        
         navigate('page-game');
         loadUnityGame();
 
     } catch (err) {
-        console.error("Greška pri verifikaciji:", err);
-        alert("Sistem Poreske uprave trenutno nije dostupan. Pokušajte kasnije.");
+        console.error("Detaljna greška:", err);
+        // Ovde je bio problem - stari tekst je zbunjivao
+        alert("Greška pri povezivanju sa serverom. Proverite internet konekciju.");
         isProcessingScan = false;
+        status.innerText = "Pokušajte ponovo.";
     }
 }
-
 function loadUnityGame() {
     console.log("Pokrećem Unity instancu...");
     const canvas = document.querySelector("#unity-canvas");
@@ -582,4 +573,5 @@ window.addEventListener('storage', (event) => {
         setTimeout(() => { window.close(); }, 5000);
     }
 });
+
 
