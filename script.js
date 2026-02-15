@@ -1,4 +1,3 @@
-// --- PROVERA KONEKCIJE ---
 console.log("script.js je uspešno učitan!");
 
 const supabaseUrl = 'https://zeqzrziiligsmrqxonhj.supabase.co';
@@ -9,16 +8,14 @@ let html5QrCode = null;
 let currentScore = 0;
 let scannedReceiptId = "";
 let isProcessingScan = false; 
-let unityInstance = null; // Globalna varijabla za Unity
+let unityInstance = null;
 
-// --- OSNOVNA NAVIGACIJA ---
 function navigate(id) {
     console.log("Navigacija na:", id);
     const pages = document.querySelectorAll('.page');
     pages.forEach(p => p.classList.remove('active'));
     
-    // FIKS ZA KOMPJUTER: Ako nismo na strani sa igrom, sakrij Unity kontejner
-    // Ovo fizički oslobađa tastaturu od Unity-ja
+
     const unityCont = document.getElementById('unity-container');
     if (unityCont) {
         if (id === 'page-game') {
@@ -36,7 +33,6 @@ function navigate(id) {
     }
 }
 
-// --- SKENER FUNKCIJA ---
 async function startScanner() {
     console.log("Funkcija startScanner je pozvana!");
     const status = document.getElementById('scan-status');
@@ -107,7 +103,6 @@ async function onScanSuccess(decodedText) {
     }
 }
 
-// --- UNITY ---
 function loadUnityGame() {
     console.log("Pokrećem Unity instancu...");
     const canvas = document.querySelector("#unity-canvas");
@@ -133,10 +128,9 @@ function loadUnityGame() {
             const bar = document.getElementById("unity-progress-bar-full");
             if (bar) bar.style.width = (100 * progress) + "%";
         }).then((instance) => {
-            unityInstance = instance; // Čuvamo instancu
+            unityInstance = instance;
             console.log("Unity spreman!");
             
-            // Dozvoli klikovima da prođu (važno za desktop)
             if (instance.setModuleCanvasClickThrough) {
                 instance.setModuleCanvasClickThrough(true);
             }
@@ -153,7 +147,6 @@ window.SendScoreToDatabase = function(score) {
     document.getElementById('final-score-display').innerText = score;
 };
 
-// --- AUTH ---
 async function handleAuth() {
     const emailField = document.getElementById('auth-email');
     const passwordField = document.getElementById('auth-password');
@@ -161,7 +154,6 @@ async function handleAuth() {
     const password = passwordField.value;
     const msg = document.getElementById('auth-msg');
 
-    // Skloni tastaturu na mobilnom
     emailField.blur();
     passwordField.blur();
 
@@ -215,7 +207,6 @@ async function handleAuth() {
     }
 }
 
-// Očišćena saveScore funkcija (samo jedna verzija!)
 async function saveScore(email, msg) {
     try {
         const { data: scoreData } = await _supabase
@@ -243,7 +234,7 @@ async function saveScore(email, msg) {
             await showLeaderboard();
             navigate('page-leaderboard');
         }, 1500);
-        // Pre nego što upišeš bilo šta, proveri da li je račun slobodan
+
 const { data: receiptCheck } = await _supabase
     .from('scanned_receipts')
     .select('scanned_by')
@@ -252,7 +243,7 @@ const { data: receiptCheck } = await _supabase
 
 if (receiptCheck && receiptCheck.scanned_by !== "IN_PROGRESS") {
     msg.innerText = "Ovaj račun je već iskorišćen!";
-    return; // Prekini sve, nema duplih poena
+    return;
 }
     } catch (e) {
         console.error(e);
@@ -260,7 +251,7 @@ if (receiptCheck && receiptCheck.scanned_by !== "IN_PROGRESS") {
     }
 }
 
-// --- RANG LISTA ---
+
 async function showLeaderboard() {
     const lbBody = document.getElementById('lb-body');
     if (!lbBody) return;
@@ -287,30 +278,29 @@ async function showLeaderboard() {
     }
 }
 
-// FORSIRANO KUCANJE - POSLEDNJA NADA
+
 window.addEventListener('keydown', function(e) {
     const activeInput = document.activeElement;
     
-    // Proveravamo da li je kursor u Email ili Password polju
+
     if (activeInput && (activeInput.id === 'auth-email' || activeInput.id === 'auth-password')) {
         
-        // 1. Ako je taster Backspace - obriši poslednji karakter
+
         if (e.key === 'Backspace') {
             activeInput.value = activeInput.value.slice(0, -1);
         } 
-        // 2. Ako je običan karakter (slovo, broj, simbol)
+
         else if (e.key.length === 1) {
             activeInput.value += e.key;
         }
 
-        // OVO JE KLJUČNO:
-        e.preventDefault(); // Ne daj Unity-ju da vidi taster
-        e.stopPropagation(); // Zaustavi dalje širenje
-        e.stopImmediatePropagation(); // Zaustavi apsolutno sve druge skripte (Unity)
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
         
         return false;
     }
-}, true); // 'true' znači da hvatamo taster pre nego što Unity uopšte trepne
+}, true);
 
 const container = document.getElementById("unity-container");
 const canvas = document.getElementById("unity-canvas");
@@ -323,7 +313,6 @@ function resizeUnityCanvas() {
 window.addEventListener("resize", resizeUnityCanvas);
 resizeUnityCanvas();
 
-// --- MODAL LOGIKA (FIXED) ---
 
 async function toggleUserInfo() {
     const modal = document.getElementById('infoModal');
@@ -332,11 +321,10 @@ async function toggleUserInfo() {
     const emailSpan = document.getElementById('infoEmail');
     const pointsSpan = document.getElementById('infoPoints');
 
-    // Otvori modal
+
     modal.style.display = 'block';
 
     try {
-        // Koristimo tvoju varijablu _supabase
         const { data: { session } } = await _supabase.auth.getSession();
         const user = session?.user;
 
@@ -345,7 +333,6 @@ async function toggleUserInfo() {
             userSection.style.display = 'block';
             emailSpan.innerText = user.email;
 
-            // Izvlačimo bodove iz tvoje tabele 'leaderboard' (pošto nju koristiš u saveScore)
             const { data: scoreData } = await _supabase
                 .from('leaderboard')
                 .select('points')
@@ -362,12 +349,10 @@ async function toggleUserInfo() {
     }
 }
 
-// Zatvaranje na X
 document.querySelector('.close-button').onclick = function() {
     document.getElementById('infoModal').style.display = "none";
 };
 
-// Zatvaranje na klik van prozora
 window.addEventListener('click', function(event) {
     const modal = document.getElementById('infoModal');
     if (event.target == modal) {
@@ -375,14 +360,11 @@ window.addEventListener('click', function(event) {
     }
 });
 
-// Funkcija za Logout
 
 
-// Čim se skripta učita, slušaj promene u logovanju
 _supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log("Auth Event:", event); // Ovo će ti ispisati šta se dešava u konzoli
+    console.log("Auth Event:", event);
 
-    // Ako je event 'PASSWORD_RECOVERY', to znači da je korisnik kliknuo link u mejlu
     if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && window.location.hash.includes("type=recovery"))) {
         console.log("Korisnik potvrđen preko mejla. Otvaram prozor za novu šifru.");
         document.getElementById('resetPasswordModal').style.display = 'block';
@@ -390,9 +372,6 @@ _supabase.auth.onAuthStateChange(async (event, session) => {
 });
 
 
-// --- EXPRESS PASSWORD RESET SISTEM ---
-
-// 1. Funkcija koja šalje mejl
 async function forgotPassword() {
     const emailField = document.getElementById('auth-email');
     const email = emailField.value.trim().toLowerCase();
@@ -403,7 +382,6 @@ async function forgotPassword() {
         return;
     }
 
-    // ZAPAMTI POENE I RAČUN PRE ODLASKA NA MEJL
     localStorage.setItem('pending_points', currentScore);
     localStorage.setItem('pending_receipt', scannedReceiptId);
     console.log("Poeni privremeno sačuvani:", currentScore);
@@ -421,7 +399,6 @@ async function forgotPassword() {
     }
 }
 
-// 2. GLAVNA PROVERA URL-A PRI UČITAVANJU
 window.addEventListener('load', async () => {
     const url = window.location.href;
     
@@ -439,18 +416,15 @@ window.addEventListener('load', async () => {
                 refresh_token: refreshToken
             });
             
-            // Čistimo URL bar odmah
             history.replaceState(null, null, window.location.pathname);
         }
 
-        // Sakrij sve i pokaži samo modal
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         const modal = document.getElementById('expressResetModal');
         if (modal) modal.style.display = 'block';
     }
 });
 
-// 3. IZVRŠAVANJE RESETA (Sređena i očišćena funkcija)
 async function executeExpressReset() {
     const newPass = document.getElementById('express-new-password').value;
     const msg = document.getElementById('express-reset-msg');
@@ -460,7 +434,6 @@ async function executeExpressReset() {
         return;
     }
 
-    // Uzimamo poene i ODMAH ih brišemo (ovo šalje signal starom tabu da se ugasi)
     const savedPoints = localStorage.getItem('pending_points');
     const savedReceipt = localStorage.getItem('pending_receipt');
     
@@ -488,7 +461,7 @@ async function executeExpressReset() {
         const { data: { user } } = await _supabase.auth.getUser();
         if (user) {
             await saveScore(user.email, msg);
-            // Modal se gasi unutar saveScore ili ovde
+
             setTimeout(() => {
                 document.getElementById('expressResetModal').style.display = 'none';
             }, 1000);
@@ -496,13 +469,13 @@ async function executeExpressReset() {
     }
 }
 
-// 4. LOGOUT
+
 async function handleLogout() {
     await _supabase.auth.signOut();
     window.location.reload();
 }
 
-// 5. DETEKTOR DRUGIH TABOVA (Self-Destruct)
+
 window.addEventListener('storage', (event) => {
     if (event.key === 'pending_points' && event.newValue === null) {
         console.log("Poeni sačuvani u drugom tabu. Uništavam ovaj tab...");
@@ -519,6 +492,7 @@ window.addEventListener('storage', (event) => {
         setTimeout(() => { window.close(); }, 5000);
     }
 });
+
 
 
 
