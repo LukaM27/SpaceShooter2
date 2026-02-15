@@ -402,26 +402,58 @@ async function forgotPassword() {
 window.addEventListener('load', async () => {
     const url = window.location.href;
     
-    if (url.includes("type=recovery") || url.includes("access_token")) {
-        console.log("Reset detektovan, aktiviram sesiju...");
-
+    // Proveravamo šta piše u URL-u
+    if (url.includes("access_token")) {
         const hash = window.location.hash.substring(1);
         const params = new URLSearchParams(hash);
-        const accessToken = params.get("access_token");
-        const refreshToken = params.get("refresh_token");
+        const type = params.get("type"); // Ovo nam kaže da li je 'signup' ili 'recovery'
 
-        if (accessToken && refreshToken) {
-            await _supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken
-            });
+        console.log("Detektovan token tipa:", type);
+
+        // 1. Ako je RECOVERY (Zaboravljena šifra) -> Pokaži modal za novu šifru
+        if (type === "recovery" || url.includes("type=recovery")) {
+            const accessToken = params.get("access_token");
+            const refreshToken = params.get("refresh_token");
+
+            if (accessToken && refreshToken) {
+                await _supabase.auth.setSession({
+                    access_token: accessToken,
+                    refresh_token: refreshToken
+                });
+                history.replaceState(null, null, window.location.pathname);
+            }
+
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            const modal = document.getElementById('expressResetModal');
+            if (modal) modal.style.display = 'block';
+        } 
+        
+        // 2. Ako je SIGNUP (Potvrda novog naloga) -> Samo ga uloguj i upiši poene
+        else if (type === "signup" || type === "invite") {
+            console.log("Uspešna potvrda naloga! Upisujem poene...");
             
+            // Očisti URL
             history.replaceState(null, null, window.location.pathname);
-        }
 
-        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        const modal = document.getElementById('expressResetModal');
-        if (modal) modal.style.display = 'block';
+            // Uzmi sačuvane poene iz memorije
+            const savedPoints = localStorage.getItem('pending_points');
+            const savedReceipt = localStorage.getItem('pending_receipt');
+
+            const { data: { user } } = await _supabase.auth.getUser();
+            
+            if (user && savedPoints) {
+                currentScore = parseInt(savedPoints);
+                scannedReceiptId = savedReceipt;
+                
+                // Automatski upiši poene i pošalji ga na rang listu
+                const msg = document.getElementById('auth-msg'); 
+                await saveScore(user.email, msg);
+                
+                // Očisti memoriju nakon upisa
+                localStorage.removeItem('pending_points');
+                localStorage.removeItem('pending_receipt');
+            }
+        }
     }
 });
 
@@ -492,6 +524,7 @@ window.addEventListener('storage', (event) => {
         setTimeout(() => { window.close(); }, 5000);
     }
 });
+
 
 
 
