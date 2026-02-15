@@ -166,6 +166,7 @@ async function handleAuth() {
     msg.style.color = "var(--yellow)";
 
     try {
+        // 1. Pokušaj prijave (Logika: Ako se uloguje, znači da je POTVRĐEN)
         const { data: signInData, error: signInError } = await _supabase.auth.signInWithPassword({
             email: email,
             password: password,
@@ -177,7 +178,16 @@ async function handleAuth() {
             return;
         }
 
+        // POSEBAN FIX: Ako nalog postoji ali MEJL NIJE POTVRĐEN
+        if (signInError.message.includes("Email not confirmed")) {
+            msg.innerText = "Nalog postoji, ali mejl nije potvrđen! Proverite inbox.";
+            msg.style.color = "orange";
+            return;
+        }
+
+        // 2. Ako nalog ne postoji (Invalid credentials), kreiraj ga
         if (signInError.message.includes("Invalid login credentials") || signInError.status === 400) {
+            
             const { data: userExists } = await _supabase
                 .from('leaderboard')
                 .select('email')
@@ -187,14 +197,30 @@ async function handleAuth() {
             if (userExists) {
                 throw new Error("Pogrešna lozinka za ovaj nalog!");
             } else {
-                const { error: signUpError } = await _supabase.auth.signUp({
+                // REGISTRACIJA NOVOG KORISNIKA
+                const { data: signUpData, error: signUpError } = await _supabase.auth.signUp({
                     email: email,
                     password: password,
                 });
 
                 if (signUpError) throw signUpError;
-                console.log("Novi nalog kreiran!");
-                await saveScore(email, msg);
+
+                // KLJUČNA PROMENA: 
+                // Ako je Supabase vratio sesiju (session), znači da je auto-confirm uključen
+                if (signUpData.session) {
+                    console.log("Nalog kreiran i automatski potvrđen!");
+                    await saveScore(email, msg);
+                } else {
+                    // Ako nema sesije, znači da MORA na mejl. 
+                    // NE zovemo saveScore ovde! Samo "parkiramo" podatke.
+                    localStorage.setItem('pending_points', currentScore);
+                    localStorage.setItem('pending_receipt', scannedReceiptId);
+                    
+                    msg.innerText = "POTVRDA: Poslat vam je mejl. Kliknite na link u njemu da se vaši bodovi upišu na rang listu!";
+                    msg.style.color = "var(--yellow)";
+                    
+                    console.log("Novi nalog čeka verifikaciju. Poeni sačuvani u localStorage.");
+                }
             }
         } else {
             throw signInError;
@@ -524,6 +550,7 @@ window.addEventListener('storage', (event) => {
         setTimeout(() => { window.close(); }, 5000);
     }
 });
+
 
 
 
