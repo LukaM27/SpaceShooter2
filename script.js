@@ -428,15 +428,14 @@ async function forgotPassword() {
 window.addEventListener('load', async () => {
     const url = window.location.href;
     
-    // Proveravamo šta piše u URL-u
     if (url.includes("access_token")) {
         const hash = window.location.hash.substring(1);
         const params = new URLSearchParams(hash);
-        const type = params.get("type"); // Ovo nam kaže da li je 'signup' ili 'recovery'
+        const type = params.get("type");
 
         console.log("Detektovan token tipa:", type);
 
-        // 1. Ako je RECOVERY (Zaboravljena šifra) -> Pokaži modal za novu šifru
+        // 1. RECOVERY (Promena šifre)
         if (type === "recovery" || url.includes("type=recovery")) {
             const accessToken = params.get("access_token");
             const refreshToken = params.get("refresh_token");
@@ -454,14 +453,12 @@ window.addEventListener('load', async () => {
             if (modal) modal.style.display = 'block';
         } 
         
-        // 2. Ako je SIGNUP (Potvrda novog naloga) -> Samo ga uloguj i upiši poene
+        // 2. SIGNUP (Potvrda naloga - OVDE RADIMO IZMENU)
         else if (type === "signup" || type === "invite") {
-            console.log("Uspešna potvrda naloga! Upisujem poene...");
+            console.log("Potvrda uspešna, prebacujem na rang listu...");
             
-            // Očisti URL
             history.replaceState(null, null, window.location.pathname);
 
-            // Uzmi sačuvane poene iz memorije
             const savedPoints = localStorage.getItem('pending_points');
             const savedReceipt = localStorage.getItem('pending_receipt');
 
@@ -471,13 +468,25 @@ window.addEventListener('load', async () => {
                 currentScore = parseInt(savedPoints);
                 scannedReceiptId = savedReceipt;
                 
-                // Automatski upiši poene i pošalji ga na rang listu
+                // Prikazujemo poruku korisniku dok se učitava
                 const msg = document.getElementById('auth-msg'); 
+                if (msg) msg.innerText = "Bodovi se upisuju...";
+
+                // Upisujemo bodove
                 await saveScore(user.email, msg);
                 
-                // Očisti memoriju nakon upisa
+                // Čistimo memoriju
                 localStorage.removeItem('pending_points');
                 localStorage.removeItem('pending_receipt');
+
+                // KLJUČNI DEO: Automatska navigacija na rang listu
+                await showLeaderboard();
+                navigate('page-leaderboard');
+            } else {
+                // Ako nema poena u memoriji (npr. samo se ulogovao), 
+                // ipak ga baci na rang listu
+                await showLeaderboard();
+                navigate('page-leaderboard');
             }
         }
     }
@@ -550,6 +559,7 @@ window.addEventListener('storage', (event) => {
         setTimeout(() => { window.close(); }, 5000);
     }
 });
+
 
 
 
