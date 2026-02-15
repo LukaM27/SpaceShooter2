@@ -62,15 +62,36 @@ async function onScanSuccess(decodedText) {
     
     console.log("Skenirano:", decodedText);
     
+    // 1. Provera PIB-a Gigatrona
     if (!decodedText.includes("102778428")) {
         alert("Nevažeći račun!");
         return;
     }
 
-    isProcessingScan = true; 
-    scannedReceiptId = new URLSearchParams(decodedText.split('?')[1]).get('vl') || decodedText.slice(-30);
-    
     try {
+        // 2. Izvlačenje parametara iz QR koda
+        const urlParams = new URL(decodedText);
+        const dt = urlParams.searchParams.get("dt"); // Datum i vreme izdavanja
+        const iznos = parseFloat(urlParams.searchParams.get("as")); // Ukupan iznos
+
+        // 3. Provera datuma (Mora biti pre 10.02.2026)
+        const datumRacuna = new Date(dt);
+        const granicaDatuma = new Date("2026-02-10T00:00:00");
+
+        if (datumRacuna >= granicaDatuma) {
+            alert("Račun je previše nov! Prihvatamo samo račune izdate pre 10.02.2026.");
+            return;
+        }
+
+        // 4. Provera iznosa (Minimalno 3000 RSD)
+        if (isNaN(iznos) || iznos < 3000) {
+            alert(`Minimalni iznos za igru je 3000 RSD. Vaš račun iznosi: ${iznos || 0} RSD.`);
+            return;
+        }
+
+        isProcessingScan = true; 
+        scannedReceiptId = urlParams.searchParams.get('vl') || decodedText.slice(-30);
+        
         const { data: existing } = await _supabase
             .from('scanned_receipts')
             .select('receipt_id')
@@ -97,8 +118,8 @@ async function onScanSuccess(decodedText) {
         loadUnityGame();
 
     } catch (err) {
-        console.error("Greška:", err);
-        alert("Problem sa bazom podataka. Pokušajte ponovo.");
+        console.error("Greška pri validaciji koda:", err);
+        alert("QR kod nije prepoznat kao validan fiskalni račun.");
         isProcessingScan = false;
     }
 }
@@ -553,17 +574,3 @@ window.addEventListener('storage', (event) => {
         setTimeout(() => { window.close(); }, 5000);
     }
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
