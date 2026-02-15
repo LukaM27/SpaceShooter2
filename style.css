@@ -1,11 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400;700&display=swap');
 
-/* Stil za INFO dugme u headeru */
+
 .info-circle {
-            /* position: absolute;
-            right: 20px;
-            top: 50%;
-            transform: translateY(-50%); */
     min-width: 35px;
     height: 35px;
     border-radius: 50%;
@@ -20,7 +16,6 @@
     margin-left: 10px;
 }
 
-/* Sijanje za prvog na listi */
 #lb-body tr:first-child {
     outline: 2px solid var(--yellow);
     outline-offset: -2px;
@@ -28,7 +23,6 @@
     box-shadow: inset 0 0 15px rgba(255, 215, 0, 0.2), 0 0 20px rgba(255, 215, 0, 0.1);
 }
 
-/* Modalni prozor */
 .modal {
     position: fixed;
     z-index: 3000;
@@ -115,12 +109,12 @@ header {
 
 header::before {
     content: '';
-    width: 35px; /* Mora biti ista širina kao i dugme */
+    width: 35px;
 }
 
 @media (max-width: 480px) {
     header::before {
-        width: 28px; /* Prati smanjenje dugmeta na mobilnom */
+        width: 28px;
     }
 }
 
@@ -128,19 +122,19 @@ header::before {
 /* Media query za mobilne telefone */
 @media (max-width: 480px) {
     .info-circle {
-        width: 28px;       /* Manja širina */
-        height: 28px;      /* Manja visina */
-        min-width: 28px;   /* Da se ne skupi */
-        font-size: 12px;   /* Manji upitnik */
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        font-size: 12px;
         border-width: 1.5px; 
     }
     
     .logo {
-        font-size: 0.85rem; /* Malo smanjujemo i tekst logoa da stane sve */
+        font-size: 0.85rem;
     }
 
     .shiny-box {
-        padding: 6px 12px; /* Manji padding oko logoa */
+        padding: 6px 12px;
     }
 }
 
@@ -169,7 +163,6 @@ header::before {
 
 .page.active { display: flex; }
 
-/* SCANNER - KOCKA */
 #reader-container {
     width: 280px;
     height: 280px;
@@ -182,7 +175,6 @@ header::before {
     background: #000;
 }
 
-/* Animacija vibracije za grešku */
 .error-shake { animation: shake 0.4s focus; border-color: var(--red) !important; }
 
 @keyframes shake {
@@ -212,7 +204,6 @@ header::before {
     100% { top: 100%; }
 }
 
-/* DUGMIĆI */
 .btn {
     background: var(--yellow);
     color: #000;
@@ -243,7 +234,6 @@ header::before {
     font-size: 14px;
 }
 
-/* IGRA */
 #game-canvas {
     border: 3px solid var(--yellow);
     background: #050505;
@@ -265,7 +255,6 @@ header::before {
     padding: 0 10px;
 }
 
-/* AUTH / LOGIN */
 .auth-container {
     background: var(--gray);
     background-image: linear-gradient(145deg, #1e1e1e, #141414);
@@ -297,7 +286,6 @@ input:focus {
     box-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
 }
 
-/* LEADERBOARD */
 .leaderboard-wrapper {
     width: 100%;
     max-width: 360px;
@@ -317,7 +305,6 @@ tr:hover { background: #1a1a1a; }
 tr:last-child td { border-bottom: none; }
 tr:first-child td { color: var(--yellow); font-weight: 700; font-size: 18px; }
 
-/* GAME OVER POPUP */
 #game-over-box {
     position: fixed;
     top: 50%;
@@ -334,7 +321,6 @@ tr:first-child td { color: var(--yellow); font-weight: 700; font-size: 18px; }
     box-shadow: 0 0 100px rgba(0,0,0,0.8);
 }
 
-/* Shiny box */
 .shiny-box {
     position: relative;
     padding: 10px 20px;
@@ -346,7 +332,6 @@ tr:first-child td { color: var(--yellow); font-weight: 700; font-size: 18px; }
     box-shadow: 0 0 15px rgba(255,215,0,0.2);
 }
 
-/* Shimmer */
 .shimmer {
     position: absolute;
     top: 0;
@@ -366,13 +351,12 @@ tr:first-child td { color: var(--yellow); font-weight: 700; font-size: 18px; }
 
 .hidden { display: none !important; }
 
-/* UNITY KONTEJNER - Popravljen za vertikalni prikaz */
 .unity-responsive-wrapper {
     width: 100%;
-    max-width: 360px; /* Širina mobilnog ekrana */
+    max-width: 360px; 
     margin: 0 auto;
     position: relative;
-    aspect-ratio: 9 / 16; /* Forsira vertikalni format */
+    aspect-ratio: 9 / 16; 
     background: #000;
     border: 3px solid var(--yellow);
     border-radius: 16px;
@@ -386,7 +370,6 @@ tr:first-child td { color: var(--yellow); font-weight: 700; font-size: 18px; }
     display: block;
 }
 
-/* Loading bar unutar vertikalnog ekrana */
 #unity-loading-bar {
     position: absolute;
     top: 50%;
@@ -396,19 +379,17 @@ tr:first-child td { color: var(--yellow); font-weight: 700; font-size: 18px; }
     z-index: 10;
 }
 
-/* Forsiramo vidljivost i prioritet za auth stranu */
 #page-auth.active {
     position: relative;
-    z-index: 5000 !important; /* Mnogo veće od Unity-ja i headera */
+    z-index: 5000 !important;
 }
 
-/* Osiguravamo da inputi primaju komande miša i tastature */
 #auth-email, #auth-password {
     position: relative;
     z-index: 5001 !important;
     pointer-events: auto !important;
 }
-/* Stil za pozadinu modala */
+
 .modal {
     display: none; 
     position: fixed;
@@ -421,7 +402,7 @@ tr:first-child td { color: var(--yellow); font-weight: 700; font-size: 18px; }
     backdrop-filter: blur(5px);
 }
 
-/* Stil za beli/tamni prozor unutra */
+
 .modal-content {
     background-color: #111;
     margin: 15% auto;
@@ -454,6 +435,7 @@ tr:first-child td { color: var(--yellow); font-weight: 700; font-size: 18px; }
     border-radius: 5px;
     cursor: pointer;
 }
+
 
 
 
