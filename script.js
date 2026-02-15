@@ -70,7 +70,7 @@ async function onScanSuccess(decodedText) {
     status.innerText = "Verifikacija računa (Edge Function)...";
 
     try {
-        // 2. POZIV SUPABASE EDGE FUNKCIJE (Provera da li račun stvarno postoji u bazi države)
+        // 2. POZIV SUPABASE EDGE FUNKCIJE
         const { data: edgeData, error: edgeError } = await _supabase.functions.invoke('verify-receipt', {
             body: { receiptUrl: decodedText }
         });
@@ -82,7 +82,7 @@ async function onScanSuccess(decodedText) {
             return;
         }
 
-        // 3. Izvlačenje parametara za dodatnu proveru (PIB, Iznos, Datum)
+        // 3. Izvlačenje parametara (PIB, Iznos, Datum)
         const urlParams = new URL(decodedText);
         const pib = urlParams.searchParams.get("pib");
         const dt = urlParams.searchParams.get("dt"); 
@@ -95,12 +95,23 @@ async function onScanSuccess(decodedText) {
             return;
         }
 
-        // Provera datuma (Pomereno na decembar 2026 da bi radilo danas 15.02.2026)
-        const datumRacuna = new Date(dt.substring(0,4) + "-" + dt.substring(4,6) + "-" + dt.substring(6,8));
-        const granicaDatuma = new Date("2026-12-31T00:00:00");
+        // --- NOVO: PROVERA DATUMA (10.02.2026 - 31.12.2026) ---
+        const godina = parseInt(dt.substring(0, 4));
+        const mesec = parseInt(dt.substring(4, 6)) - 1; // JS meseci idu od 0-11
+        const dan = parseInt(dt.substring(6, 8));
+        const datumRacuna = new Date(godina, mesec, dan);
 
-        if (datumRacuna >= granicaDatuma) {
-            alert("Račun je iz budućnosti ili van dozvoljenog opsega!");
+        const pocetakKonkursa = new Date(2026, 1, 10); // 10.02.2026.
+        const krajKonkursa = new Date(2026, 11, 31, 23, 59, 59); // 31.12.2026.
+
+        if (datumRacuna < pocetakKonkursa) {
+            alert("Račun je izdat pre početka konkursa (10.02.2026).");
+            isProcessingScan = false;
+            return;
+        }
+
+        if (datumRacuna > krajKonkursa) {
+            alert("Račun je izvan perioda trajanja konkursa.");
             isProcessingScan = false;
             return;
         }
@@ -112,7 +123,7 @@ async function onScanSuccess(decodedText) {
             return;
         }
 
-        // 4. Provera duplikata u tvojoj bazi
+        // 4. Provera duplikata u bazi
         scannedReceiptId = urlParams.searchParams.get('vl') || decodedText.slice(-30);
         
         const { data: existing } = await _supabase
@@ -214,7 +225,6 @@ async function handleAuth() {
             return;
         }
 
-        // Ako korisnik ne postoji, pokušaj registraciju
         const { data: signUpData, error: signUpError } = await _supabase.auth.signUp({
             email: email,
             password: password,
